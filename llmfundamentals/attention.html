@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attention Heatmap</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<style>
+:root { --page-accent: #d97706; }
+
+/* ── Top grid ── */
+.top-grid { display:grid; grid-template-columns:3fr 2fr; min-height:400px; }
+.panel-left { padding:1.5rem; gap:0; }
+.panel-right { padding:1.5rem; }
+
+/* Sentence selector */
+.sentence-select { display:flex; gap:0.75rem; flex-wrap:wrap; margin-bottom:1.5rem; }
+.sent-btn {
+  background:var(--color-surface); border:1px solid var(--color-border);
+  border-radius:8px; padding:6px 14px;
+  font-family:var(--font-mono); font-size:0.75rem; color:var(--color-text-secondary);
+  cursor:pointer; transition:all 0.2s;
+}
+.sent-btn:hover, .sent-btn.active { border-color:var(--page-accent); color:var(--color-amber-deeper); background:var(--color-amber-light); }
+
+.sentence-display {
+  background:var(--color-surface); border:2px solid var(--color-border);
+  border-radius:14px; padding:1.5rem;
+  box-shadow:var(--shadow-xs);
+}
+.instr { font-family:var(--font-mono); font-size:0.7rem; color:var(--color-text-muted); margin-bottom:1.25rem; }
+.words-row { display:flex; flex-wrap:wrap; gap:10px; }
+.word-chip {
+  padding:10px 18px; border-radius:10px;
+  font-family:var(--font-mono); font-size:0.95rem;
+  cursor:pointer; transition:all 0.2s;
+  border:2px solid transparent;
+  position:relative; user-select:none;
+}
+.word-chip:hover { transform:translateY(-2px); }
+.word-chip.focused {
+  border-color: var(--page-accent);
+  box-shadow: 0 0 16px rgba(217,119,6,0.25);
+  color: var(--color-text-primary);
+  transform: translateY(-3px);
+}
+
+/* Attention levels */
+.att-none   { background:var(--color-surface-alt); color:var(--color-text-muted); }
+.att-low    { background:rgba(245,158,11,0.08); color:var(--color-amber-deeper); }
+.att-med    { background:rgba(245,158,11,0.2); color:var(--color-amber-dark); }
+.att-high   { background:rgba(245,158,11,0.4); color:var(--page-accent); box-shadow:0 0 12px rgba(245,158,11,0.2); }
+.att-focus  { background:var(--page-accent); color:var(--color-surface); }
+
+.att-score-badge {
+  position:absolute; top:-22px; left:50%; transform:translateX(-50%);
+  font-family:var(--font-mono); font-size:0.65rem;
+  background:var(--color-amber-light); color:var(--color-amber-dark);
+  padding:2px 6px; border-radius:4px; border:1px solid var(--page-accent);
+  white-space:nowrap; pointer-events:none;
+  opacity:0; transition:opacity 0.2s;
+}
+.word-chip:not(.att-none):not(.focused) .att-score-badge { opacity:1; }
+
+/* Lines canvas */
+.lines-wrap { position:relative; }
+canvas#lines { position:absolute; top:0; left:0; pointer-events:none; }
+
+/* Scores panel */
+.scores-panel {
+  background:var(--color-surface); border:1px solid var(--color-border);
+  border-radius:12px; padding:1.5rem; margin-bottom:1.5rem;
+  box-shadow:var(--shadow-xs);
+}
+.scores-title { font-family:var(--font-mono); font-size:0.7rem; color:var(--color-text-muted); letter-spacing:2px; margin-bottom:1rem; }
+.score-row { display:flex; align-items:center; gap:0.75rem; margin-bottom:0.75rem; }
+.score-word { font-family:var(--font-mono); font-size:0.82rem; width:120px; color:var(--color-text-primary); }
+.score-bar-bg { flex:1; background:var(--color-border-light); border-radius:100px; height:10px; overflow:hidden; }
+.score-bar-fill { height:100%; border-radius:100px; transition:width 0.5s ease; background:linear-gradient(90deg,var(--color-amber-mid),var(--page-accent)); }
+.score-val { font-family:var(--font-mono); font-size:0.8rem; width:40px; text-align:right; color:var(--page-accent); font-weight:600; }
+.score-check { width:20px; font-size:0.8rem; }
+
+.insight {
+  background:var(--color-amber-light); border:1px solid var(--color-amber-bright); border-radius:10px;
+  padding:1.25rem 1.5rem; font-family:var(--font-mono); font-size:0.82rem;
+  color:var(--color-amber-deeper); line-height:1.6;
+}
+.insight b { color:var(--color-amber-dark); }
+
+/* ── Explainer section ─────────────────────────────────────────── */
+.explainer-heading {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 0.3rem;
+  letter-spacing: -0.01em;
+}
+.explainer-subheading {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-bottom: 1.5rem;
+}
+.explainer-steps {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
+  align-items: start;
+  gap: 0;
+}
+.explainer-arrow {
+  display: flex;
+  align-items: flex-start;
+  padding-top: 1.4rem;
+  padding-inline: 0.5rem;
+  color: var(--page-accent);
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.explainer-step {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  box-shadow: var(--shadow-xs);
+  height: 100%;
+}
+.step-num {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--page-accent);
+  font-family: var(--font-sans);
+  line-height: 1;
+}
+.step-body {
+  flex: 1;
+}
+.step-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 0.35rem;
+  line-height: 1.3;
+}
+.step-desc {
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+.step-desc code {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  background: var(--color-border-light);
+  color: var(--color-amber-dark);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.explainer-insight {
+  background: var(--color-amber-light);
+  border: 1px solid var(--color-amber-bright);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-top: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--color-amber-deeper);
+  line-height: 1.6;
+}
+.explainer-insight b { color: var(--color-amber-dark); }
+.qkv-diagram {
+  margin-top: 0.85rem;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  line-height: 1.8;
+}
+.qkv-diagram .formula {
+  font-size: 0.9rem;
+  color: var(--page-accent);
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.5rem;
+}
+.qkv-diagram .qkv-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.4rem;
+}
+.qkv-pill {
+  background: var(--color-amber-light);
+  border: 1px solid var(--color-amber-bright);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 0.75rem;
+  color: var(--color-amber-deeper);
+  white-space: nowrap;
+}
+/* ── end explainer ─────────────────────────────────────────────── */
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html">← Demos</a>
+  <span class="nav-sep">/</span>
+  <span class="cur">Attention Heatmap</span>
+</nav>
+
+<!-- Full-width page header -->
+<div class="page-header">
+  <h1>Attention <span>Heatmap</span></h1>
+  <div class="subtitle">// Click any word to see what it "attends to". Brightness = attention weight.</div>
+</div>
+
+<!-- Top grid: LEFT interactive demo, RIGHT results -->
+<div class="top-grid">
+
+  <!-- LEFT: sentence selector + word chips + canvas -->
+  <div class="panel-left">
+    <div class="sentence-select" id="sent-select"></div>
+
+    <div class="sentence-display lines-wrap" id="sent-display">
+      <div class="instr">👇 Click a word to highlight its attention pattern</div>
+      <div class="words-row" id="words-row"></div>
+      <canvas id="lines"></canvas>
+    </div>
+  </div>
+
+  <!-- RIGHT: scores panel + insight box -->
+  <div class="panel-right">
+    <div class="scores-panel">
+      <div class="scores-title" id="scores-title">SELECT A WORD TO SEE ATTENTION SCORES</div>
+      <div id="scores-list"></div>
+    </div>
+
+    <div class="insight" id="insight-box">
+      Click any highlighted word to see its attention pattern.
+    </div>
+  </div>
+
+</div>
+
+<!-- BOTTOM: full-width Why Attention explainer -->
+<div class="panel-bottom">
+
+  <div class="explainer-heading">Why Attention Exists</div>
+  <div class="explainer-subheading">// a brief history of the mechanism powering every modern LLM</div>
+
+  <div class="explainer-steps">
+
+    <!-- Step 1 -->
+    <div class="explainer-step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <div class="step-title">The RNN Problem</div>
+        <div class="step-desc">
+          RNNs processed text <em>one token at a time</em>, passing meaning through a single fixed-size vector. By token 50, the signal from token 1 was largely forgotten. Long-range dependencies were nearly impossible.
+        </div>
+        <div class="explainer-insight"><b>Bottleneck:</b> all context squeezed through one vector — early words vanished.</div>
+      </div>
+    </div>
+
+    <div class="explainer-arrow">→</div>
+
+    <!-- Step 2 -->
+    <div class="explainer-step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <div class="step-title">2017 Breakthrough</div>
+        <div class="step-desc">
+          Vaswani et al. (Google, 2017) — <em>throw away recurrence entirely</em>. Let every token look directly at every other token simultaneously, weighted by relevance. No bottleneck. Token 1 and token 50 communicate directly.
+        </div>
+        <div class="explainer-insight"><b>Key insight:</b> direct all-to-all lookup. Distance no longer equals information loss.</div>
+      </div>
+    </div>
+
+    <div class="explainer-arrow">→</div>
+
+    <!-- Step 3 -->
+    <div class="explainer-step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <div class="step-title">QKV — the formula</div>
+        <div class="qkv-diagram">
+          <div class="formula">softmax( QK&#7488; / &radic;d&#8342; ) V</div>
+          <div class="qkv-row">
+            <span class="qkv-pill"><b>Q</b> — "what am I looking for?"</span>
+            <span class="qkv-pill"><b>K</b> — "what do I offer?"</span>
+            <span class="qkv-pill"><b>V</b> — "what I give you"</span>
+          </div>
+        </div>
+        <div class="explainer-insight"><b>Intuition:</b> "its" queries → "loan" matches → "loan"'s value dominates the output.</div>
+      </div>
+    </div>
+
+    <div class="explainer-arrow">→</div>
+
+    <!-- Step 4 -->
+    <div class="explainer-step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <div class="step-title">Why "Attention"?</div>
+        <div class="step-desc">
+          Borrowed from cognitive psychology — <em>selective attention</em>: humans don't process all input equally; we focus on what's relevant and suppress the rest. The mechanism is the model's differentiable version of that selective focus.
+        </div>
+        <div class="explainer-insight"><b>Psychology → ML:</b> attention weights = learned, end-to-end optimized selective focus.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- BOTTOM: References -->
+<div class="panel-bottom" style="border-top:1px solid var(--color-border);">
+
+  <div class="explainer-heading">Further Reading</div>
+  <div class="explainer-subheading">// real attention visualisations — this demo is illustrative, not real model output</div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin-top:0.5rem;">
+
+    <a href="https://poloclub.github.io/transformer-explainer" target="_blank" rel="noopener" style="text-decoration:none;">
+      <div class="explainer-step" style="transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(217,119,6,0.15)'" onmouseout="this.style.boxShadow=''">
+        <div style="font-family:var(--font-mono);font-size:0.6rem;letter-spacing:2px;color:var(--page-accent);margin-bottom:0.25rem;">BEST FOR LEARNERS</div>
+        <div class="step-title">Transformer Explainer</div>
+        <div class="step-desc">Runs GPT-2 live in the browser — type any text and see real attention weights update instantly. Closest in spirit to this demo, but with actual model output.</div>
+        <div class="explainer-insight" style="margin-top:auto"><b>poloclub.github.io</b> · no setup needed</div>
+      </div>
+    </a>
+
+    <a href="https://github.com/jessevig/bertviz" target="_blank" rel="noopener" style="text-decoration:none;">
+      <div class="explainer-step" style="transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(217,119,6,0.15)'" onmouseout="this.style.boxShadow=''">
+        <div style="font-family:var(--font-mono);font-size:0.6rem;letter-spacing:2px;color:var(--page-accent);margin-bottom:0.25rem;">GOLD STANDARD</div>
+        <div class="step-title">BertViz</div>
+        <div class="step-desc">Jupyter notebook tool showing real multi-head attention from BERT and GPT-2 — every head, every layer, real weights. The reference tool for researchers.</div>
+        <div class="explainer-insight" style="margin-top:auto"><b>github.com/jessevig/bertviz</b> · Python</div>
+      </div>
+    </a>
+
+    <a href="https://attentionviz.com" target="_blank" rel="noopener" style="text-decoration:none;">
+      <div class="explainer-step" style="transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(217,119,6,0.15)'" onmouseout="this.style.boxShadow=''">
+        <div style="font-family:var(--font-mono);font-size:0.6rem;letter-spacing:2px;color:var(--page-accent);margin-bottom:0.25rem;">COMPARATIVE</div>
+        <div class="step-title">AttentionViz</div>
+        <div class="step-desc">Interactive side-by-side comparison of BERT and GPT-2 attention across all heads — useful for seeing how different architectures attend differently.</div>
+        <div class="explainer-insight" style="margin-top:auto"><b>attentionviz.com</b> · browser</div>
+      </div>
+    </a>
+
+    <a href="https://bbycroft.net/llm" target="_blank" rel="noopener" style="text-decoration:none;">
+      <div class="explainer-step" style="transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(217,119,6,0.15)'" onmouseout="this.style.boxShadow=''">
+        <div style="font-family:var(--font-mono);font-size:0.6rem;letter-spacing:2px;color:var(--page-accent);margin-bottom:0.25rem;">FULL PICTURE</div>
+        <div class="step-title">LLM Visualisation</div>
+        <div class="step-desc">Step-by-step 3D walkthrough of the full transformer computation — not attention-only, but shows how attention fits into the bigger architecture.</div>
+        <div class="explainer-insight" style="margin-top:auto"><b>bbycroft.net/llm</b> · browser</div>
+      </div>
+    </a>
+
+  </div>
+
+  <div style="margin-top:1.25rem;padding:0.85rem 1rem;background:var(--color-surface-alt);border:1px solid var(--color-border);border-radius:8px;font-family:var(--font-mono);font-size:0.72rem;color:var(--color-text-secondary);line-height:1.6;">
+    <b style="color:var(--color-text-primary)">Note:</b> The attention weights in this demo are illustrative — hand-crafted to show the concept clearly. Real transformer attention is distributed across <em>all</em> tokens, varies by head and layer, and is often counter-intuitive (models frequently attend heavily to punctuation or special tokens).
+  </div>
+
+</div>
+
+<script>
+// Normalize an attention dict so values sum to 1.0 (softmax property)
+function normalizeAtt(raw) {
+  const total = Object.values(raw).reduce((s, v) => s + v, 0);
+  const out = {};
+  for (const [k, v] of Object.entries(raw)) out[k] = Math.round(v / total * 100) / 100;
+  return out;
+}
+
+const SENTENCES = [
+  {
+    label: 'Loan sentence',
+    words: ['The','bank','approved','the','loan','after','reviewing','its','risk','profile','.'],
+    attention: {
+      // raw relative weights → normalized below so each row sums to 1
+      'its':     normalizeAtt({ 'loan':0.82, 'the':0.14, 'risk':0.14, 'profile':0.10, 'bank':0.04, 'approved':0.01, 'after':0.01, 'reviewing':0.01, 'The':0.00, '.':0.00 }),
+      'bank':    normalizeAtt({ 'approved':0.71, 'loan':0.55, 'The':0.10, 'reviewing':0.08, 'risk':0.06, 'profile':0.04, 'its':0.03, 'the':0.02, 'after':0.01, '.':0.01 }),
+      'loan':    normalizeAtt({ 'bank':0.26, 'approved':0.24, 'risk':0.20, 'profile':0.18, 'its':0.15, 'the':0.05, 'after':0.03, 'reviewing':0.02, 'The':0.01, '.':0.00 }),
+      'risk':    normalizeAtt({ 'profile':0.45, 'loan':0.28, 'its':0.14, 'bank':0.05, 'approved':0.03, 'reviewing':0.02, 'the':0.01, 'after':0.01, 'The':0.00, '.':0.00 }),
+      'profile': normalizeAtt({ 'risk':0.45, 'loan':0.26, 'its':0.14, 'bank':0.05, 'approved':0.03, 'reviewing':0.02, 'the':0.01, 'after':0.01, 'The':0.00, '.':0.00 }),
+    },
+    insight: {
+      'its': '<b>"its"</b> attends most strongly to <b>"loan"</b> — not "bank". The model correctly resolves this pronoun to the loan\'s risk profile, not the bank\'s.',
+      'bank': '<b>"bank"</b> attends strongly to <b>"approved"</b> — it understands bank as the subject performing the action.',
+      'risk': '<b>"risk"</b> attends most to <b>"profile"</b> — a compound noun: the model knows these two words form a concept together.',
+      'default': 'Select any highlighted word to see its attention pattern.',
+    }
+  },
+  {
+    label: 'Compliance',
+    words: ['The','account','was','flagged','after','the','transaction','exceeded','the','limit','set','by','compliance','.'],
+    attention: {
+      'limit':      normalizeAtt({ 'compliance':0.40, 'exceeded':0.20, 'transaction':0.18, 'set':0.10, 'account':0.05, 'flagged':0.04, 'by':0.02, 'the':0.01, 'was':0.00, 'after':0.00, 'The':0.00, '.':0.00 }),
+      'flagged':    normalizeAtt({ 'account':0.30, 'transaction':0.28, 'exceeded':0.18, 'limit':0.10, 'compliance':0.07, 'The':0.03, 'was':0.02, 'after':0.01, 'set':0.01, 'the':0.00, 'by':0.00, '.':0.00 }),
+      'compliance': normalizeAtt({ 'limit':0.32, 'set':0.22, 'by':0.18, 'flagged':0.12, 'exceeded':0.07, 'transaction':0.05, 'account':0.03, 'the':0.01, 'was':0.00, 'after':0.00, 'The':0.00, '.':0.00 }),
+    },
+    insight: {
+      'limit': '<b>"limit"</b> attends most to <b>"compliance"</b> — the model understands this as a compliance threshold, not a personal or speed limit.',
+      'flagged': '<b>"flagged"</b> attends to <b>"account"</b> and <b>"transaction"</b> — it knows what was flagged and why.',
+      'compliance': '<b>"compliance"</b> sets the context — highest attention to "limit" and "set".',
+      'default': 'Click any word to see its attention pattern.',
+    }
+  },
+  {
+    label: 'Coreference',
+    words: ['The','customer','submitted','the','application','and','she','was','approved','.'],
+    attention: {
+      'she':      normalizeAtt({ 'customer':0.68, 'application':0.12, 'submitted':0.07, 'approved':0.05, 'The':0.03, 'the':0.02, 'and':0.01, 'was':0.01, '.':0.01 }),
+      'approved': normalizeAtt({ 'customer':0.28, 'she':0.24, 'application':0.20, 'submitted':0.12, 'was':0.07, 'and':0.04, 'The':0.02, 'the':0.02, '.':0.01 }),
+    },
+    insight: {
+      'she': '<b>"she"</b> attends most strongly to <b>"customer"</b> — correct coreference resolution across 6 words.',
+      'approved': '<b>"approved"</b> attends to both <b>"customer"</b> and <b>"she"</b> — understanding who was approved.',
+      'default': 'Click a word to see attention.',
+    }
+  }
+];
+
+let currentSent = 0;
+let focused = null;
+
+function buildSentenceSelect() {
+  const el = document.getElementById('sent-select');
+  el.innerHTML = SENTENCES.map((s,i) => `<button class="sent-btn ${i===0?'active':''}" onclick="setSent(${i})">${s.label}</button>`).join('');
+}
+
+function setSent(i) {
+  currentSent = i; focused = null;
+  document.querySelectorAll('.sent-btn').forEach((b,j) => b.classList.toggle('active',j===i));
+  renderWords();
+  clearScores();
+}
+
+function renderWords() {
+  const sent = SENTENCES[currentSent];
+  const row = document.getElementById('words-row');
+  row.innerHTML = sent.words.map((w,i) => {
+    const hasAtt = sent.attention[w] !== undefined;
+    return `<div class="word-chip att-none ${hasAtt?'has-att':''}" id="wc-${i}" data-word="${w}" onclick="focusWord('${w}',${i})">
+      <span class="att-score-badge" id="badge-${i}"></span>
+      ${w}
+    </div>`;
+  }).join('');
+}
+
+function focusWord(word, idx) {
+  const sent = SENTENCES[currentSent];
+  focused = word;
+
+  // Reset all
+  document.querySelectorAll('.word-chip').forEach(el => {
+    el.className = 'word-chip att-none';
+  });
+
+  const focusEl = document.getElementById(`wc-${idx}`);
+  if (focusEl) focusEl.className = 'word-chip att-focus focused';
+
+  const att = sent.attention[word];
+  if (!att) { clearScores(); return; }
+
+  // Apply attention levels
+  sent.words.forEach((w, i) => {
+    if (i === idx) return;
+    const score = att[w] || 0;
+    const el = document.getElementById(`wc-${i}`);
+    if (!el) return;
+    let cls = 'att-none';
+    if (score >= 0.6) cls = 'att-high';
+    else if (score >= 0.3) cls = 'att-med';
+    else if (score >= 0.1) cls = 'att-low';
+    el.className = `word-chip ${cls}`;
+    const badge = document.getElementById(`badge-${i}`);
+    if (badge && score >= 0.1) badge.textContent = score.toFixed(2);
+  });
+
+  renderScores(word, att);
+  renderInsight(word);
+}
+
+function renderScores(word, att) {
+  const title = document.getElementById('scores-title');
+  title.textContent = `ATTENTION FROM "${word.toUpperCase()}"`;
+
+  const sorted = Object.entries(att).sort((a,b) => b[1]-a[1]).slice(0,6);
+  const list = document.getElementById('scores-list');
+  list.innerHTML = sorted.map(([w, s]) => {
+    const check = s >= 0.5 ? '✓' : s >= 0.2 ? '~' : '✗';
+    const checkColor = s >= 0.5 ? 'var(--color-emerald)' : s >= 0.2 ? 'var(--color-amber)' : 'var(--color-text-secondary)';
+    return `<div class="score-row">
+      <div class="score-word">"${w}"</div>
+      <div class="score-bar-bg"><div class="score-bar-fill" style="width:${s*100}%"></div></div>
+      <div class="score-val">${s.toFixed(2)}</div>
+      <div class="score-check" style="color:${checkColor}">${check}</div>
+    </div>`;
+  }).join('');
+}
+
+function clearScores() {
+  document.getElementById('scores-title').textContent = 'SELECT A WORD TO SEE ATTENTION SCORES';
+  document.getElementById('scores-list').innerHTML = '';
+  document.getElementById('insight-box').textContent = 'Click any highlighted word to see its attention pattern.';
+}
+
+function renderInsight(word) {
+  const sent = SENTENCES[currentSent];
+  const box = document.getElementById('insight-box');
+  const text = sent.insight[word] || sent.insight['default'] || '';
+  box.innerHTML = text;
+}
+
+buildSentenceSelect();
+renderWords();
+clearScores();
+</script>
+</body>
+</html>

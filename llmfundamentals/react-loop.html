@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ReAct Loop Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<style>
+:root { --page-accent: #7c3aed; }
+body { display:flex; flex-direction:column; }
+
+/* TOP GRID */
+.top-grid {
+  display:grid;
+  grid-template-columns:2fr 3fr;
+  min-height:500px;
+  flex:1;
+}
+
+/* LEFT PANEL */
+.left-panel {
+  background:var(--color-surface);
+  padding:1.5rem;
+  border-right:1px solid var(--color-border);
+  display:flex;
+  flex-direction:column;
+  gap:1rem;
+}
+
+/* RIGHT PANEL */
+.right-panel {
+  background:var(--color-surface-alt);
+  padding:1.5rem;
+  overflow-y:auto;
+}
+
+/* GOAL */
+.goal-box {
+  background:var(--color-indigo-light); border:2px solid var(--page-accent);
+  border-radius:12px; padding:1.25rem 1.5rem;
+  display:flex; align-items:center; gap:1rem;
+}
+.goal-icon { font-size:1.5rem; flex-shrink:0; }
+.goal-label { font-family:var(--font-mono); font-size:0.65rem; color:var(--page-accent); letter-spacing:2px; }
+.goal-text { font-size:0.95rem; font-weight:600; color:var(--color-indigo-deeper); margin-top:0.25rem; }
+
+/* CONTROLS */
+.controls { display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center; }
+.ctrl-btn {
+  background:var(--color-surface); border:1px solid var(--color-border); border-radius:8px;
+  padding:8px 18px; font-family:var(--font-sans); font-size:0.85rem;
+  font-weight:600; color:var(--color-text-secondary); cursor:pointer; transition:all 0.2s;
+}
+.ctrl-btn.primary { background:var(--page-accent); border-color:var(--page-accent); color:white; }
+.ctrl-btn.primary:hover { background:var(--color-violet-deep); }
+.ctrl-btn:hover:not(.primary) { border-color:var(--color-border-md); background:var(--color-surface-alt); }
+.ctrl-btn:disabled { opacity:0.4; cursor:not-allowed; }
+.iter-counter { font-family:var(--font-mono); font-size:0.8rem; color:var(--color-text-secondary); }
+
+/* TIMELINE */
+.timeline { position:relative; }
+.iteration {
+  display:grid; grid-template-columns:48px 1fr; gap:0;
+  margin-bottom:1rem; opacity:0; transform:translateY(12px);
+  transition:all 0.4s ease;
+}
+.iteration.visible { opacity:1; transform:translateY(0); }
+
+.iter-sidebar { display:flex; flex-direction:column; align-items:center; }
+.iter-dot {
+  width:36px; height:36px; border-radius:50%; border:2px solid var(--color-border);
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-mono); font-size:0.7rem; font-weight:700;
+  flex-shrink:0; transition:all 0.4s;
+}
+.iter-line { flex:1; width:2px; background:var(--color-border); margin:4px 0; min-height:20px; }
+
+.iter-content { padding:0 0 0 1rem; }
+.iter-label { font-family:var(--font-mono); font-size:0.65rem; color:var(--color-text-muted); letter-spacing:2px; margin-bottom:0.5rem; }
+
+.rao-block {
+  background:var(--color-surface); border:1px solid var(--color-border);
+  border-radius:10px; overflow:hidden; margin-bottom:0.75rem;
+  box-shadow:var(--shadow-xs);
+}
+.rao-row {
+  display:grid; grid-template-columns:100px 1fr;
+  border-bottom:1px solid var(--color-border-light);
+}
+.rao-row:last-child { border-bottom:none; }
+.rao-key {
+  padding:0.75rem 1rem; font-family:var(--font-mono); font-size:0.72rem;
+  font-weight:700; border-right:1px solid var(--color-border-light); display:flex; align-items:center; gap:0.4rem;
+}
+.rao-val { padding:0.75rem 1rem; font-family:var(--font-mono); font-size:0.78rem; color:var(--color-text-secondary); line-height:1.5; }
+.rao-val code { color:var(--page-accent); background:rgba(124,58,237,0.08); padding:1px 6px; border-radius:4px; }
+.rao-val .data { color:var(--color-text-primary); }
+
+/* Colors per type */
+.r-reason .rao-key { color:var(--color-green); }
+.r-act .rao-key { color:var(--color-blue); }
+.r-observe .rao-key { color:var(--color-orange); }
+
+/* TYPING CURSOR */
+.typing::after { content:'▌'; animation:blink 0.7s infinite; color:var(--page-accent); }
+@keyframes blink { 0%,100%{opacity:1}50%{opacity:0} }
+
+/* FINAL */
+.final-box {
+  background:var(--color-green-light); border:2px solid var(--color-green);
+  border-radius:12px; padding:1.25rem 1.5rem; margin-top:1rem;
+  font-family:var(--font-mono); font-size:0.85rem; color:var(--color-green-dark);
+  display:none;
+}
+
+/* LEGEND */
+.legend { display:flex; gap:1.25rem; flex-wrap:wrap; }
+.leg { display:flex; align-items:center; gap:0.4rem; font-family:var(--font-mono); font-size:0.75rem; }
+.leg-dot { width:8px; height:8px; border-radius:50%; }
+
+/* SCENARIOS */
+.scenario-row { display:flex; gap:0.75rem; flex-wrap:wrap; }
+.sc-btn {
+  background:var(--color-surface); border:1px solid var(--color-border); border-radius:8px;
+  padding:6px 14px; font-family:var(--font-mono); font-size:0.75rem;
+  color:var(--color-text-secondary); cursor:pointer; transition:all 0.2s;
+}
+.sc-btn:hover, .sc-btn.active { border-color:var(--page-accent); color:var(--page-accent); background:var(--color-violet-pale); }
+
+/* LEFT PANEL SECTION LABEL */
+.section-label {
+  font-family:var(--font-mono); font-size:0.65rem; color:var(--color-text-muted);
+  letter-spacing:2px; text-transform:uppercase; margin-bottom:-0.25rem;
+}
+
+/* BOTTOM EXPLANATION */
+.bottom-section {
+  background:var(--color-surface);
+  border-top:1px solid var(--color-border);
+  padding:1.5rem 2rem;
+}
+.bottom-section h2 {
+  font-size:1.1rem; font-weight:700; margin-bottom:0.25rem;
+  color:var(--color-text-primary);
+}
+.bottom-section h2 span { color:var(--page-accent); }
+.bottom-section .bottom-sub {
+  font-family:var(--font-mono); font-size:0.75rem; color:var(--color-text-secondary);
+  margin-bottom:1rem;
+}
+.concept-grid {
+  display:grid;
+  grid-template-columns:repeat(4, 1fr);
+  gap:1rem;
+}
+.concept-card {
+  background:var(--color-surface);
+  border:1px solid var(--color-border);
+  border-radius:10px;
+  padding:1rem;
+}
+.concept-card .card-icon { font-size:1.4rem; margin-bottom:0.5rem; }
+.concept-card .card-title { font-weight:700; font-size:0.9rem; margin-bottom:0.3rem; color:var(--color-text-primary); }
+.concept-card .card-desc { font-size:0.82rem; color:var(--color-text-secondary); line-height:1.5; }
+
+/* right panel empty state */
+.empty-state {
+  display:flex; align-items:center; justify-content:center;
+  height:100%; min-height:300px;
+  font-family:var(--font-mono); font-size:0.82rem; color:var(--color-text-muted);
+  text-align:center; flex-direction:column; gap:0.5rem;
+}
+.empty-state .empty-icon { font-size:2rem; opacity:0.4; }
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html">← Demos</a>
+  <span class="nav-sep">/</span>
+  <span class="cur">ReAct Loop</span>
+</nav>
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+  <h1>ReAct <span>Loop</span></h1>
+  <div class="subtitle">// An AI agent alternates: Reason about what to do → Act (call a tool) → Observe the result → Repeat.</div>
+</div>
+
+<!-- TOP GRID -->
+<div class="top-grid">
+
+  <!-- LEFT: Controls -->
+  <div class="left-panel">
+
+    <div>
+      <div class="section-label">Scenario</div>
+      <div class="scenario-row" id="scenarios"></div>
+    </div>
+
+    <div class="goal-box">
+      <div class="goal-icon">🎯</div>
+      <div>
+        <div class="goal-label">AGENT GOAL</div>
+        <div class="goal-text" id="goal-text">Loading...</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label" style="margin-bottom:0.5rem">Legend</div>
+      <div class="legend">
+        <div class="leg"><div class="leg-dot" style="background:#16a34a"></div>🧠 Reason</div>
+        <div class="leg"><div class="leg-dot" style="background:#2563eb"></div>⚡ Act (tool call)</div>
+        <div class="leg"><div class="leg-dot" style="background:#ea580c"></div>👁 Observe (result)</div>
+      </div>
+    </div>
+
+    <!-- Spacer to push buttons toward bottom -->
+    <div style="flex:1"></div>
+
+    <div>
+      <div class="section-label" style="margin-bottom:0.75rem">Controls</div>
+      <div class="controls">
+        <button class="ctrl-btn primary" onclick="stepForward()" id="stepBtn">▶ Step</button>
+        <button class="ctrl-btn" onclick="autoRun()" id="autoBtn">⏩ Auto-run</button>
+        <button class="ctrl-btn" onclick="reset()" id="resetBtn">↺ Reset</button>
+      </div>
+      <div class="iter-counter" id="counter" style="margin-top:0.75rem">Step 0 / 0</div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT: Timeline -->
+  <div class="right-panel" id="right-panel">
+    <div class="empty-state" id="empty-state">
+      <div class="empty-icon">⏳</div>
+      <div>Press <strong>Step</strong> or <strong>Auto-run</strong> to begin the simulation</div>
+    </div>
+    <div class="timeline" id="timeline"></div>
+    <div class="final-box" id="final"></div>
+  </div>
+
+</div>
+
+<!-- BOTTOM: What is ReAct? -->
+<div class="bottom-section">
+  <h2>What is <span>ReAct</span>?</h2>
+  <div class="bottom-sub">// Reason + Act — a prompting strategy that interleaves thinking and tool use in a loop.</div>
+  <div class="concept-grid">
+    <div class="concept-card">
+      <div class="card-icon">🧠</div>
+      <div class="card-title">Reason</div>
+      <div class="card-desc">LLM introspects: what do I know? what do I need? It writes out its reasoning before taking any action.</div>
+    </div>
+    <div class="concept-card">
+      <div class="card-icon">⚡</div>
+      <div class="card-title">Act</div>
+      <div class="card-desc">Calls a tool, API, or search with specific parameters — database query, web lookup, external service.</div>
+    </div>
+    <div class="concept-card">
+      <div class="card-icon">👁</div>
+      <div class="card-title">Observe</div>
+      <div class="card-desc">Reads the result and adds it to context. The model now knows more than it did before the action.</div>
+    </div>
+    <div class="concept-card">
+      <div class="card-icon">🔁</div>
+      <div class="card-title">Repeat</div>
+      <div class="card-desc">Loops until the goal is fully achieved or max iterations reached — enabling multi-step agentic tasks.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SCENARIOS = [
+  {
+    id:'fraud',
+    label:'Fraud Detection',
+    goal:'Identify and escalate all high-risk transactions from the past 24 hours',
+    steps:[
+      { type:'iteration', label:'ITERATION 1',
+        rows:[
+          { type:'reason', icon:'🧠', key:'Reason', val:'I need to retrieve recent transactions before I can analyze anything.' },
+          { type:'act',    icon:'⚡', key:'Act',    val:'→ <code>get_transactions(period="24h", limit=50000)</code>' },
+          { type:'observe',icon:'👁', key:'Observe', val:'<span class="data">47,293 transactions returned with: amount, counterparty, timestamp, category, flags</span>' },
+        ]
+      },
+      { type:'iteration', label:'ITERATION 2',
+        rows:[
+          { type:'reason', icon:'🧠', key:'Reason', val:'I have 47,293 transactions. I need risk scores. I\'ll batch them to the scoring API.' },
+          { type:'act',    icon:'⚡', key:'Act',    val:'→ <code>score_transactions_batch(ids=[...47293 ids...])</code>' },
+          { type:'observe',icon:'👁', key:'Observe', val:'<span class="data">Risk scores 0.0–1.0 returned for all 47,293 transactions. Top score: 0.97 (TXN-9923)</span>' },
+        ]
+      },
+      { type:'iteration', label:'ITERATION 3',
+        rows:[
+          { type:'reason', icon:'🧠', key:'Reason', val:'Threshold is 0.85. I have 47 transactions above threshold. I will flag each with a reason.' },
+          { type:'act',    icon:'⚡', key:'Act',    val:'→ <code>flag_transaction(id="TXN-9923", reason="Score 0.97 — velocity anomaly")</code> × 47' },
+          { type:'observe',icon:'👁', key:'Observe', val:'<span class="data">All 47 flags confirmed. Audit log entries created.</span>' },
+        ]
+      },
+      { type:'iteration', label:'ITERATION 4',
+        rows:[
+          { type:'reason', icon:'🧠', key:'Reason', val:'Flags complete. Compliance team must be notified with a summary report.' },
+          { type:'act',    icon:'⚡', key:'Act',    val:'→ <code>notify_compliance_team(flagged_count=47, top_risk="TXN-9923:0.97")</code>' },
+          { type:'observe',icon:'👁', key:'Observe', val:'<span class="data">Notification sent ✓ Report logged to audit system ✓</span>' },
+        ]
+      },
+      { type:'final', text:'✓ 47 transactions flagged and escalated. Highest risk: TXN-9923 (0.97). Compliance team notified. Full report logged to audit system.' }
+    ]
+  },
+  {
+    id:'loan',
+    label:'Loan Processing',
+    goal:'Process loan application #APP-4421 end-to-end',
+    steps:[
+      { type:'iteration', label:'ITERATION 1',
+        rows:[
+          { type:'reason', icon:'🧠', key:'Reason', val:'I need the applicant\'s credit bureau report first.' },
+          { type:'act',    icon:'⚡', key:'Act',    val:'→ <code>fetch_credit_report(customer_id="C-8834", bureau="CIBIL")</code>' },
+          { type:'observe',icon:'👁', key:'Observe', val:'<span class="data">Score: 712. No defaults in 36 months. DTI: 38%. 2 active loans.</span>' },
+        ]
+      },
+      { type:'iteration', label:'ITERATION 2',
+        rows:[
+          { type:'reason', icon:'🧠', key:'Reason', val:'Score 712 is above 650 minimum. DTI 38% is under 40% threshold. I must verify income now.' },
+          { type:'act',    icon:'⚡', key:'Act',    val:'→ <code>verify_income(customer_id="C-8834", method="bank_statement")</code>' },
+          { type:'observe',icon:'👁', key:'Observe', val:'<span class="data">Monthly income ₹85,000 verified via 6-month statement. Stable employment.</span>' },
+        ]
+      },
+      { type:'iteration', label:'ITERATION 3',
+        rows:[
+          { type:'reason', icon:'🧠', key:'Reason', val:'Income verified. Run AML + sanctions screening before proceeding.' },
+          { type:'act',    icon:'⚡', key:'Act',    val:'→ <code>aml_screen(customer_id="C-8834", lists=["OFAC","UN","EU"])</code>' },
+          { type:'observe',icon:'👁', key:'Observe', val:'<span class="data">No matches found. PEP check: clear. Clean result.</span>' },
+        ]
+      },
+      { type:'iteration', label:'ITERATION 4',
+        rows:[
+          { type:'reason', icon:'🧠', key:'Reason', val:'All checks passed. Eligible for standard approval. Logging decision and notifying RM.' },
+          { type:'act',    icon:'⚡', key:'Act',    val:'→ <code>log_decision(app_id="APP-4421", result="APPROVED", tier=2)</code><br>→ <code>notify_relationship_manager(rm_id="RM-102")</code>' },
+          { type:'observe',icon:'👁', key:'Observe', val:'<span class="data">Decision logged with full audit trail. RM notified for final sign-off.</span>' },
+        ]
+      },
+      { type:'final', text:'✓ APP-4421 approved (Tier 2). KYC clear, credit 712, income verified, AML clean. Decision logged. Awaiting RM sign-off.' }
+    ]
+  }
+];
+
+let current = 0;
+let stepIndex = 0;
+let autoTimer = null;
+
+function buildScenarios() {
+  document.getElementById('scenarios').innerHTML = SCENARIOS.map((s,i) =>
+    `<div class="sc-btn ${i===0?'active':''}" onclick="selectScenario(${i})">${s.label}</div>`
+  ).join('');
+}
+
+function selectScenario(i) {
+  current = i;
+  document.querySelectorAll('.sc-btn').forEach((el,j)=>el.classList.toggle('active',j===i));
+  reset();
+}
+
+function reset() {
+  if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+  stepIndex = 0;
+  const s = SCENARIOS[current];
+  document.getElementById('goal-text').textContent = s.goal;
+  document.getElementById('timeline').innerHTML = '';
+  document.getElementById('final').style.display = 'none';
+  document.getElementById('final').textContent = '';
+  document.getElementById('counter').textContent = `Step 0 / ${s.steps.length}`;
+  document.getElementById('stepBtn').disabled = false;
+  document.getElementById('autoBtn').disabled = false;
+  document.getElementById('autoBtn').textContent = '⏩ Auto-run';
+  document.getElementById('empty-state').style.display = 'flex';
+}
+
+function stepForward() {
+  const s = SCENARIOS[current];
+  if (stepIndex >= s.steps.length) return;
+  document.getElementById('empty-state').style.display = 'none';
+  const step = s.steps[stepIndex];
+  renderStep(step);
+  stepIndex++;
+  document.getElementById('counter').textContent = `Step ${stepIndex} / ${s.steps.length}`;
+  if (stepIndex >= s.steps.length) {
+    document.getElementById('stepBtn').disabled = true;
+    if (autoTimer) { clearInterval(autoTimer); autoTimer = null; document.getElementById('autoBtn').textContent = '⏩ Auto-run'; }
+  }
+}
+
+function autoRun() {
+  if (autoTimer) { clearInterval(autoTimer); autoTimer = null; document.getElementById('autoBtn').textContent = '⏩ Auto-run'; return; }
+  document.getElementById('autoBtn').textContent = '⏸ Pause';
+  autoTimer = setInterval(() => {
+    const s = SCENARIOS[current];
+    if (stepIndex >= s.steps.length) { clearInterval(autoTimer); autoTimer = null; document.getElementById('autoBtn').textContent = '⏩ Auto-run'; return; }
+    stepForward();
+  }, 1400);
+}
+
+function renderStep(step) {
+  const tl = document.getElementById('timeline');
+  if (step.type === 'final') {
+    const fb = document.getElementById('final');
+    fb.style.display = 'block';
+    fb.textContent = step.text;
+    fb.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    return;
+  }
+
+  const iterNum = document.querySelectorAll('.iteration').length + 1;
+  const colors = { reason:'#16a34a', act:'#2563eb', observe:'#ea580c' };
+
+  const el = document.createElement('div');
+  el.className = 'iteration';
+  el.innerHTML = `
+    <div class="iter-sidebar">
+      <div class="iter-dot" style="border-color:#7c3aed;color:#7c3aed;background:#f5f3ff">${iterNum}</div>
+      <div class="iter-line"></div>
+    </div>
+    <div class="iter-content">
+      <div class="iter-label">${step.label}</div>
+      <div class="rao-block">
+        ${step.rows.map(r => `
+          <div class="rao-row r-${r.type}">
+            <div class="rao-key" style="color:${colors[r.type]}">${r.icon} ${r.key}</div>
+            <div class="rao-val">${r.val}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  tl.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('visible'));
+  el.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+buildScenarios();
+reset();
+</script>
+</body>
+</html>

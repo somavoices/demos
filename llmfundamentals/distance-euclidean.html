@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Euclidean Distance Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<style>
+:root { --page-accent: #7c3aed; }
+nav { gap:0.5rem; }
+
+/* ── Outer wrapper */
+.page-wrap { max-width:1080px; margin:0 auto; padding:2rem 2rem 4rem; display:flex; flex-direction:column; gap:0; }
+
+/* ── Page header: full width (no background/border — inside .page-wrap) */
+.page-header { padding:2rem 0 1.5rem; background:none; border:none; display:flex; flex-direction:column; gap:0.5rem; }
+.page-header h1 { font-size:2.2rem; line-height:1.1; }
+.page-header .subtitle { font-size:0.85rem; }
+
+/* ── TOP: two-panel grid */
+.top-grid {
+  display:grid;
+  grid-template-columns:1fr 280px;
+  min-height:420px;
+  background:var(--color-surface);
+  border:1px solid var(--color-border);
+  border-radius:12px;
+  overflow:hidden;
+}
+
+/* LEFT: canvas area */
+.panel-canvas {
+  background:var(--color-violet-pale);
+  display:flex;
+  flex-direction:column;
+  padding:1.25rem;
+  gap:0.75rem;
+}
+.panel-canvas-label {
+  font-family:var(--font-mono);
+  font-size:0.7rem;
+  letter-spacing:2px;
+  color:var(--color-purple);
+  text-transform:uppercase;
+}
+.canvas-wrap {
+  position:relative;
+  background:var(--color-surface);
+  border:1px solid var(--color-border);
+  border-radius:10px;
+  overflow:hidden;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  padding:0.75rem;
+  flex:1;
+}
+canvas#scatter { display:block; }
+.scatter-hint {
+  font-family:var(--font-mono);
+  font-size:0.72rem;
+  color:var(--color-text-muted);
+  text-align:center;
+}
+
+/* RIGHT: results panel */
+.panel-results {
+  background:var(--color-surface);
+  border-left:1px solid var(--color-border);
+  padding:1.5rem;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+  gap:1.25rem;
+}
+.results-prompt {
+  font-family:var(--font-mono);
+  font-size:0.78rem;
+  color:var(--color-text-muted);
+  padding:0.75rem 0;
+  text-align:center;
+  display:none;
+}
+.results-prompt.visible { display:block; }
+
+.neighbor-col h3 {
+  font-size:0.82rem;
+  font-weight:700;
+  margin-bottom:0.75rem;
+  display:flex;
+  align-items:center;
+  gap:0.5rem;
+}
+.neighbor-col h3 .badge {
+  font-family:'Fira Code',monospace;
+  font-size:0.65rem;
+  padding:2px 7px;
+  border-radius:100px;
+}
+.eucl-badge { background:var(--color-amber-100); color:var(--color-amber-deeper); }
+.cos-badge  { background:var(--color-violet-pale); color:var(--color-violet-dark); }
+
+.neighbor-list { display:flex; flex-direction:column; gap:0.4rem; }
+.neighbor-row {
+  display:flex;
+  align-items:center;
+  gap:0.5rem;
+  font-family:var(--font-mono);
+  font-size:0.78rem;
+  padding:0.35rem 0.5rem;
+  border-radius:6px;
+  background:var(--color-surface-alt);
+}
+.neighbor-rank { color:var(--color-text-muted); width:14px; }
+.neighbor-word { font-weight:500; color:var(--color-text-primary); flex:1; }
+.neighbor-dist { color:var(--page-accent); font-size:0.73rem; }
+.neighbor-empty { font-family:var(--font-mono); font-size:0.78rem; color:var(--color-text-muted); padding:0.5rem; }
+
+.results-divider {
+  border:none;
+  border-top:1px solid var(--color-border-light);
+  margin:0;
+}
+
+/* ── BOTTOM: explanation area */
+.bottom-area {
+  background:var(--color-surface);
+  border:1px solid var(--color-border);
+  border-top:none;
+  border-radius:0 0 12px 12px;
+  padding:1.75rem 2rem;
+  display:flex;
+  flex-direction:column;
+  gap:2rem;
+}
+
+/* Formula + magnitude problem side-by-side */
+.explain-row {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:1.5rem;
+  align-items:start;
+}
+
+/* Formula panel */
+.formula-panel {
+  background:var(--color-violet-pale);
+  border:1px solid var(--color-purple);
+  border-radius:10px;
+  padding:1.25rem 1.75rem;
+  text-align:center;
+}
+.formula-text {
+  font-family:var(--font-mono);
+  font-size:1.4rem;
+  font-weight:500;
+  color:var(--color-violet-dark);
+  letter-spacing:0.03em;
+}
+.formula-note {
+  font-family:var(--font-mono);
+  font-size:0.75rem;
+  color:var(--page-accent);
+  margin-top:0.5rem;
+}
+.formula-explanation {
+  font-size:0.87rem;
+  color:var(--color-text-secondary);
+  line-height:1.7;
+  margin-top:1rem;
+}
+.formula-explanation strong { color:var(--color-text-primary); }
+
+/* Magnitude problem box */
+.magnitude-box {
+  display:flex;
+  flex-direction:column;
+  gap:0.9rem;
+}
+.section-label {
+  font-family:var(--font-mono);
+  font-size:0.7rem;
+  letter-spacing:2px;
+  color:var(--color-purple);
+  text-transform:uppercase;
+  margin-bottom:0.1rem;
+}
+.magnitude-box h2 { font-size:1.05rem; font-weight:700; }
+.magnitude-box h2 span { color:var(--page-accent); }
+
+.compare-cards {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:0.75rem;
+}
+.compare-card {
+  border-radius:10px;
+  padding:1rem;
+  border:1px solid var(--color-border);
+}
+.compare-card.problem { background:var(--color-amber-100); border-color:var(--color-amber-mid); }
+.compare-card.solution { background:var(--color-green-pale); border-color:var(--color-emerald-100); }
+.compare-card h3 { font-size:0.88rem; font-weight:700; margin-bottom:0.5rem; }
+.compare-card.problem h3 { color:var(--color-orange); }
+.compare-card.solution h3 { color:var(--color-green-dark); }
+.compare-card p { font-size:0.8rem; color:var(--color-text-secondary); line-height:1.6; }
+.compare-card .tag {
+  display:inline-block;
+  font-family:var(--font-mono);
+  font-size:0.68rem;
+  padding:2px 8px;
+  border-radius:100px;
+  margin-bottom:0.5rem;
+}
+.compare-card.problem .tag { background:var(--color-amber-mid); color:var(--color-amber-deeper); }
+.compare-card.solution .tag { background:var(--color-emerald-100); color:var(--color-green-deeper); }
+
+/* SVG diagram */
+.diagram-wrap { display:flex; justify-content:center; margin:0.5rem 0 0.25rem; }
+.diagram-caption {
+  text-align:center;
+  font-family:var(--font-mono);
+  font-size:0.72rem;
+  color:var(--color-text-secondary);
+  margin-top:0.4rem;
+}
+
+/* Comparison table */
+.comp-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+.comp-table th {
+  background:var(--page-accent);
+  color:var(--color-surface);
+  font-family:var(--font-sans);
+  font-weight:600;
+  padding:0.75rem 1rem;
+  text-align:left;
+}
+.comp-table th:first-child { border-radius:8px 0 0 0; }
+.comp-table th:last-child  { border-radius:0 8px 0 0; }
+.comp-table td {
+  padding:0.7rem 1rem;
+  border-bottom:1px solid var(--color-border-light);
+  color:var(--color-text-secondary);
+  line-height:1.5;
+}
+.comp-table tr:nth-child(even) td { background:var(--color-surface-alt); }
+.comp-table tr:last-child td:first-child { border-radius:0 0 0 8px; }
+.comp-table tr:last-child td:last-child  { border-radius:0 0 8px 0; }
+.comp-table td:first-child {
+  font-family:var(--font-mono);
+  font-size:0.78rem;
+  color:var(--color-text-secondary);
+  font-weight:500;
+}
+.comp-table td.fail    { color:var(--color-red-dark); font-weight:600; }
+.comp-table td.pass    { color:var(--color-green); font-weight:600; }
+.comp-table td.neutral { color:var(--color-text-secondary); }
+
+/* Insight box */
+.insight-box {
+  background:var(--color-violet-pale);
+  border:1px solid var(--color-purple);
+  border-radius:10px;
+  padding:1.25rem 1.5rem;
+  color:var(--color-violet-dark);
+  font-size:0.9rem;
+  line-height:1.7;
+}
+.insight-box strong { color:var(--color-violet-dark); }
+.insight-label {
+  font-family:var(--font-mono);
+  font-size:0.7rem;
+  letter-spacing:2px;
+  color:var(--page-accent);
+  margin-bottom:0.5rem;
+  display:block;
+}
+
+.bottom-section-title { font-size:1.05rem; font-weight:700; }
+.bottom-section-title span { color:var(--page-accent); }
+
+@media (max-width:800px) {
+  .top-grid { grid-template-columns:1fr; }
+  .panel-results { border-left:none; border-top:1px solid var(--color-border); }
+  .explain-row { grid-template-columns:1fr; }
+  .compare-cards { grid-template-columns:1fr; }
+  .page-header h1 { font-size:1.6rem; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html">← Demos</a>
+  <span class="nav-sep">/</span>
+  <span class="cur">Euclidean Distance</span>
+</nav>
+
+<div class="page-wrap">
+
+  <!-- Full-width page header -->
+  <div class="page-header">
+    <h1>Euclidean <span>Distance</span></h1>
+    <div class="subtitle">// straight-line distance in vector space. Intuitive — but breaks for text.</div>
+  </div>
+
+  <!-- TOP: two-panel grid -->
+  <div class="top-grid">
+
+    <!-- LEFT: scatter plot canvas -->
+    <div class="panel-canvas">
+      <div class="panel-canvas-label">Interactive Word Space</div>
+      <div class="canvas-wrap">
+        <canvas id="scatter"></canvas>
+      </div>
+      <div class="scatter-hint">Click a word point to compare nearest neighbors</div>
+    </div>
+
+    <!-- RIGHT: results panel -->
+    <div class="panel-results">
+      <div class="results-prompt visible" id="results-prompt">Click a word to see nearest neighbors</div>
+
+      <!-- Nearest by Euclidean -->
+      <div class="neighbor-col" id="eucl-col">
+        <h3>
+          Nearest by Euclidean
+          <span class="badge eucl-badge">√(Δx²+Δy²)</span>
+        </h3>
+        <div class="neighbor-list" id="eucl-list">
+          <div class="neighbor-empty">Click a word to explore</div>
+        </div>
+      </div>
+
+      <hr class="results-divider">
+
+      <!-- Nearest by Cosine -->
+      <div class="neighbor-col" id="cos-col">
+        <h3>
+          Nearest by Cosine
+          <span class="badge cos-badge">angle similarity</span>
+        </h3>
+        <div class="neighbor-list" id="cos-list">
+          <div class="neighbor-empty">Click a word to explore</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /top-grid -->
+
+  <!-- BOTTOM: explanation area -->
+  <div class="bottom-area">
+
+    <!-- Formula + Magnitude Problem side by side -->
+    <div class="explain-row">
+
+      <!-- Formula panel -->
+      <div>
+        <div class="section-label">Section 01</div>
+        <div class="bottom-section-title" style="margin-bottom:0.9rem;">What is <span>Euclidean Distance</span>?</div>
+        <div class="formula-panel">
+          <div class="formula-text">d(A,B) = √( Σ (aᵢ − bᵢ)² )</div>
+          <div class="formula-note">sum over all dimensions i · square root of squared differences</div>
+        </div>
+        <p class="formula-explanation">
+          <strong>The straight-line distance</strong> between two points in n-dimensional space — the classic "as the crow flies" measurement. In 2D: √((x₂−x₁)² + (y₂−y₁)²). Generalizes naturally to any number of dimensions.
+        </p>
+        <p class="formula-explanation" style="margin-top:0.6rem;">
+          Works perfectly for <strong>physical measurements</strong> — GPS coordinates, pixel colors, sensor readings. But <strong>breaks down for NLP</strong> because of the magnitude problem: two documents about the same topic can be far apart if one is longer.
+        </p>
+      </div>
+
+      <!-- Magnitude problem -->
+      <div class="magnitude-box">
+        <div>
+          <div class="section-label">Section 02</div>
+          <div class="bottom-section-title">The <span>Magnitude Problem</span></div>
+        </div>
+
+        <div class="compare-cards">
+          <div class="compare-card problem">
+            <span class="tag">PROBLEM — Euclidean</span>
+            <h3>Length skews distance</h3>
+            <p>A short and long article on the same topic produce vectors pointing in the same direction — but with different magnitudes. Euclidean measures the <strong>gap between tips</strong>, so the long doc appears dissimilar.</p>
+          </div>
+          <div class="compare-card solution">
+            <span class="tag">SOLUTION — Cosine</span>
+            <h3>Direction only, not length</h3>
+            <p>Cosine measures the <strong>angle between vectors</strong>. Same direction = angle 0° = similarity 1.0, regardless of length. Topics cluster correctly; document length no longer pollutes the score.</p>
+          </div>
+        </div>
+
+        <!-- SVG Diagram -->
+        <div class="diagram-wrap">
+          <svg width="300" height="210" viewBox="0 0 340 240" xmlns="http://www.w3.org/2000/svg">
+            <rect width="340" height="240" fill="#fafafa" rx="8"/>
+            <line x1="40" y1="200" x2="310" y2="200" stroke="#e5e7eb" stroke-width="1"/>
+            <line x1="40" y1="200" x2="40" y2="20" stroke="#e5e7eb" stroke-width="1"/>
+            <line x1="40" y1="160" x2="310" y2="160" stroke="#f3f4f6" stroke-width="1" stroke-dasharray="4,4"/>
+            <line x1="40" y1="120" x2="310" y2="120" stroke="#f3f4f6" stroke-width="1" stroke-dasharray="4,4"/>
+            <line x1="40" y1="80"  x2="310" y2="80"  stroke="#f3f4f6" stroke-width="1" stroke-dasharray="4,4"/>
+            <line x1="100" y1="20" x2="100" y2="200" stroke="#f3f4f6" stroke-width="1" stroke-dasharray="4,4"/>
+            <line x1="160" y1="20" x2="160" y2="200" stroke="#f3f4f6" stroke-width="1" stroke-dasharray="4,4"/>
+            <line x1="220" y1="20" x2="220" y2="200" stroke="#f3f4f6" stroke-width="1" stroke-dasharray="4,4"/>
+            <line x1="280" y1="20" x2="280" y2="200" stroke="#f3f4f6" stroke-width="1" stroke-dasharray="4,4"/>
+            <text x="28" y="212" font-family="Fira Code, monospace" font-size="10" fill="#9ca3af">O</text>
+            <line x1="40" y1="200" x2="100" y2="140" stroke="#a78bfa" stroke-width="2.5" marker-end="url(#arrowShort)"/>
+            <line x1="40" y1="200" x2="240" y2="40" stroke="#7c3aed" stroke-width="2.5" marker-end="url(#arrowLong)"/>
+            <line x1="100" y1="140" x2="240" y2="40" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="5,4"/>
+            <path d="M 60,200 A 22,22 0 0,0 55.5,178.5" fill="none" stroke="#16a34a" stroke-width="1.5"/>
+            <text x="62" y="185" font-family="Fira Code, monospace" font-size="9" fill="#16a34a">θ=0°</text>
+            <circle cx="100" cy="140" r="4" fill="#a78bfa"/>
+            <text x="104" y="136" font-family="Fira Code, monospace" font-size="10" fill="#7c3aed">short doc [1,1]</text>
+            <circle cx="240" cy="40" r="4" fill="#7c3aed"/>
+            <text x="244" y="36" font-family="Fira Code, monospace" font-size="10" fill="#5b21b6">long doc [4,4]</text>
+            <text x="162" y="88" font-family="Fira Code, monospace" font-size="9.5" fill="#dc2626" transform="rotate(-35,162,88)">d ≈ 4.24 (large!)</text>
+            <text x="48" y="228" font-family="Fira Code, monospace" font-size="9" fill="#16a34a">cos(θ) = 1.0 (identical direction)</text>
+            <defs>
+              <marker id="arrowShort" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+                <polygon points="0 0, 7 3.5, 0 7" fill="#a78bfa"/>
+              </marker>
+              <marker id="arrowLong" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+                <polygon points="0 0, 7 3.5, 0 7" fill="#7c3aed"/>
+              </marker>
+            </defs>
+          </svg>
+        </div>
+        <div class="diagram-caption">Both vectors point in identical direction (45°) — same topic.<br>Euclidean distance ≈ 4.24. Cosine similarity = 1.0.</div>
+      </div>
+
+    </div><!-- /explain-row -->
+
+    <!-- Comparison table (full width) -->
+    <div>
+      <div class="section-label" style="margin-bottom:0.6rem;">Section 03</div>
+      <div class="bottom-section-title" style="margin-bottom:1rem;">Side-by-Side <span>Comparison</span></div>
+      <div style="overflow-x:auto;">
+        <table class="comp-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Euclidean Distance</th>
+              <th>Cosine Similarity</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Measures</td>
+              <td class="neutral">Straight-line gap between points</td>
+              <td class="neutral">Angle between vectors</td>
+            </tr>
+            <tr>
+              <td>Magnitude sensitive</td>
+              <td class="fail">Yes — vector length matters</td>
+              <td class="pass">No — direction only</td>
+            </tr>
+            <tr>
+              <td>Good for</td>
+              <td class="neutral">Image pixels, physical coords, K-means</td>
+              <td class="neutral">Text, NLP, embeddings, RAG</td>
+            </tr>
+            <tr>
+              <td>"Short vs long doc" problem</td>
+              <td class="fail">Fails — different distances</td>
+              <td class="pass">Works correctly</td>
+            </tr>
+            <tr>
+              <td>Range</td>
+              <td class="neutral">0 to ∞</td>
+              <td class="neutral">0 to 1 (for unit vectors)</td>
+            </tr>
+            <tr>
+              <td>Used in</td>
+              <td class="neutral">K-means clustering, spatial search</td>
+              <td class="neutral">Vector DB retrieval, RAG pipelines</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Key takeaway -->
+    <div>
+      <div class="section-label" style="margin-bottom:0.6rem;">Section 04</div>
+      <div class="bottom-section-title" style="margin-bottom:1rem;">Key <span>Takeaway</span></div>
+      <div class="insight-box">
+        <span class="insight-label">// foundational insight</span>
+        In NLP, embedding models often <strong>normalize</strong> output vectors to unit length before storing them. When vectors are unit-normalized, Euclidean distance becomes <strong>mathematically proportional</strong> to cosine distance — so the distinction disappears at inference time.
+        <br><br>
+        But understanding <strong>why cosine is preferred for raw embeddings</strong> is foundational: it makes similarity <em>magnitude-invariant</em>, so a long document and a short document on the same topic receive the same score. Without this, vector search would be biased toward documents of similar length rather than similar meaning.
+      </div>
+    </div>
+
+  </div><!-- /bottom-area -->
+
+</div><!-- /page-wrap -->
+
+<script>
+// ─── Scatter Plot ────────────────────────────────────────────────────────────
+(function () {
+  const CANVAS_W = 500;
+  const CANVAS_H = 400;
+
+  const canvas = document.getElementById('scatter');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width  = CANVAS_W * dpr;
+  canvas.height = CANVAS_H * dpr;
+  canvas.style.width  = CANVAS_W + 'px';
+  canvas.style.height = CANVAS_H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  // Word points (x, y) in canvas logical pixels
+  const words = [
+    { label: 'king',   x: 380, y:  80 },
+    { label: 'queen',  x: 340, y: 110 },
+    { label: 'man',    x: 300, y: 200 },
+    { label: 'woman',  x: 260, y: 230 },
+    { label: 'dog',    x: 100, y: 320 },
+    { label: 'cat',    x: 140, y: 300 },
+    { label: 'bank',   x: 220, y: 160 },
+    { label: 'river',  x:  80, y: 180 },
+  ];
+
+  let selected = null;
+
+  // ── Euclidean distance (canvas coords)
+  function euclidean(a, b) {
+    return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+  }
+
+  // ── Cosine similarity (vectors from canvas origin 0,0)
+  // Note: canvas y increases downward, but for cosine we use raw coords
+  function cosine(a, b) {
+    const dot = a.x * b.x + a.y * b.y;
+    const magA = Math.sqrt(a.x ** 2 + a.y ** 2);
+    const magB = Math.sqrt(b.x ** 2 + b.y ** 2);
+    if (magA === 0 || magB === 0) return 0;
+    return dot / (magA * magB);
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+
+    // Background
+    ctx.fillStyle = '#fafafa';
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+    // Grid
+    ctx.strokeStyle = 'rgba(0,0,0,0.04)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x <= CANVAS_W; x += 40) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, CANVAS_H); ctx.stroke();
+    }
+    for (let y = 0; y <= CANVAS_H; y += 40) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(CANVAS_W, y); ctx.stroke();
+    }
+
+    // If a point is selected: draw dashed radius circle
+    if (selected !== null) {
+      const sel = words[selected];
+      // Find nearest neighbor by Euclidean
+      let minEucl = Infinity;
+      for (let i = 0; i < words.length; i++) {
+        if (i === selected) continue;
+        const d = euclidean(sel, words[i]);
+        if (d < minEucl) minEucl = d;
+      }
+      // Draw dashed circle at nearest Euclidean distance
+      ctx.save();
+      ctx.setLineDash([6, 4]);
+      ctx.strokeStyle = '#a78bfa';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(sel.x, sel.y, minEucl, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+      // Draw lines to 3 nearest Euclidean neighbors
+      const euclRanked = words
+        .map((w, i) => ({ i, d: euclidean(sel, w) }))
+        .filter(r => r.i !== selected)
+        .sort((a, b) => a.d - b.d);
+
+      euclRanked.slice(0, 3).forEach((r, rank) => {
+        const t = words[r.i];
+        ctx.save();
+        ctx.setLineDash([4, 3]);
+        ctx.strokeStyle = `rgba(234,179,8,${0.8 - rank * 0.2})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(sel.x, sel.y); ctx.lineTo(t.x, t.y); ctx.stroke();
+        ctx.restore();
+      });
+
+      // Draw lines to 3 nearest Cosine neighbors
+      const cosRanked = words
+        .map((w, i) => ({ i, d: cosine(sel, w) }))
+        .filter(r => r.i !== selected)
+        .sort((a, b) => b.d - a.d); // higher cosine = more similar
+
+      cosRanked.slice(0, 3).forEach((r, rank) => {
+        const t = words[r.i];
+        ctx.save();
+        ctx.setLineDash([3, 5]);
+        ctx.strokeStyle = `rgba(124,58,237,${0.7 - rank * 0.15})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(sel.x, sel.y); ctx.lineTo(t.x, t.y); ctx.stroke();
+        ctx.restore();
+      });
+    }
+
+    // Points and labels
+    words.forEach((w, i) => {
+      const isSel = i === selected;
+      const r = isSel ? 12 : 8;
+
+      ctx.beginPath();
+      ctx.arc(w.x, w.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = isSel ? '#4c1d95' : '#7c3aed';
+      ctx.fill();
+      ctx.strokeStyle = isSel ? '#a78bfa' : '#ffffff';
+      ctx.lineWidth = isSel ? 2.5 : 2;
+      ctx.stroke();
+
+      // Label
+      ctx.font = `500 12px 'Fira Code', monospace`;
+      ctx.fillStyle = isSel ? '#4c1d95' : '#374151';
+      // Place label to avoid canvas edges
+      const lx = w.x + (w.x > CANVAS_W - 60 ? -(w.label.length * 7 + 8) : 14);
+      const ly = w.y + (w.y < 20 ? 20 : 4);
+      ctx.fillText(w.label, lx, ly);
+    });
+
+    // Legend
+    ctx.font = "11px 'Fira Code', monospace";
+    ctx.fillStyle = '#9ca3af';
+    ctx.fillText('— — Euclidean neighbors', 12, CANVAS_H - 26);
+    ctx.fillStyle = '#a78bfa';
+    ctx.fillText('·  ·  Cosine neighbors', 12, CANVAS_H - 10);
+  }
+
+  function updateNeighborLists() {
+    const euclEl   = document.getElementById('eucl-list');
+    const cosEl    = document.getElementById('cos-list');
+    const promptEl = document.getElementById('results-prompt');
+
+    if (selected === null) {
+      euclEl.innerHTML  = '<div class="neighbor-empty">Click a word to explore</div>';
+      cosEl.innerHTML   = '<div class="neighbor-empty">Click a word to explore</div>';
+      promptEl.classList.add('visible');
+      return;
+    }
+
+    promptEl.classList.remove('visible');
+
+    const sel = words[selected];
+
+    const euclRanked = words
+      .map((w, i) => ({ word: w.label, i, d: euclidean(sel, w) }))
+      .filter(r => r.i !== selected)
+      .sort((a, b) => a.d - b.d);
+
+    const cosRanked = words
+      .map((w, i) => ({ word: w.label, i, d: cosine(sel, w) }))
+      .filter(r => r.i !== selected)
+      .sort((a, b) => b.d - a.d);
+
+    euclEl.innerHTML = euclRanked.map((r, idx) =>
+      `<div class="neighbor-row">
+        <span class="neighbor-rank">${idx + 1}.</span>
+        <span class="neighbor-word">${r.word}</span>
+        <span class="neighbor-dist">d=${r.d.toFixed(1)}</span>
+       </div>`
+    ).join('');
+
+    cosEl.innerHTML = cosRanked.map((r, idx) =>
+      `<div class="neighbor-row">
+        <span class="neighbor-rank">${idx + 1}.</span>
+        <span class="neighbor-word">${r.word}</span>
+        <span class="neighbor-dist">cos=${r.d.toFixed(3)}</span>
+       </div>`
+    ).join('');
+  }
+
+  // ── Hit test
+  canvas.addEventListener('click', function (e) {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    // Scale from CSS pixels to logical pixels (they're the same here because
+    // we set style width/height equal to logical width/height)
+    let hit = null;
+    let bestD = Infinity;
+    words.forEach((w, i) => {
+      const d = Math.sqrt((w.x - mx) ** 2 + (w.y - my) ** 2);
+      if (d < 18 && d < bestD) { bestD = d; hit = i; }
+    });
+    selected = (hit !== null && hit !== selected) ? hit : null;
+    draw();
+    updateNeighborLists();
+  });
+
+  draw();
+})();
+</script>
+</body>
+</html>

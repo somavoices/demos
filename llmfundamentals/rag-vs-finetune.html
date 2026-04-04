@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prompt vs RAG vs Fine-Tuning</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<style>
+:root { --page-accent: #0891b2; }
+body { display:flex; flex-direction:column; }
+
+/* SCENARIO PICKER */
+.scenarios { display:flex; gap:0.75rem; flex-wrap:wrap; margin-bottom:1.5rem; }
+.sc-btn {
+  background:var(--color-surface); border:1px solid var(--color-border);
+  border-radius:var(--radius-md); padding:7px 16px;
+  font-family:var(--font-mono); font-size:0.75rem; color:var(--color-text-secondary);
+  cursor:pointer; transition:all 0.2s;
+}
+.sc-btn:hover { border-color:var(--page-accent); color:var(--page-accent); }
+.sc-btn.active { background:var(--color-cyan-light); border-color:var(--page-accent); color:var(--color-cyan); font-weight:600; }
+
+/* THREE-COLUMN APPROACH GRID */
+.approach-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-bottom:1.5rem; }
+
+.approach-card {
+  border-radius:var(--radius-xl); border:2px solid var(--color-border);
+  overflow:hidden; display:flex; flex-direction:column; transition:all 0.2s;
+}
+.approach-card.recommended { border-color:var(--color-emerald); box-shadow:0 0 0 2px var(--color-emerald-light), var(--shadow-lg); }
+.approach-card.partial     { border-color:var(--color-amber); }
+.approach-card.poor        { border-color:var(--color-red-mid); opacity:0.8; }
+
+.approach-header {
+  padding:1rem 1.25rem 0.75rem;
+  display:flex; flex-direction:column; gap:0.25rem;
+}
+.approach-label { font-family:var(--font-mono); font-size:0.6rem; letter-spacing:2px; color:var(--color-text-muted); }
+.approach-title { font-size:1rem; font-weight:700; }
+.approach-verdict {
+  display:inline-flex; align-items:center; gap:0.3rem;
+  font-family:var(--font-mono); font-size:0.65rem; font-weight:700;
+  padding:3px 10px; border-radius:var(--radius-pill); margin-top:0.25rem; align-self:flex-start;
+}
+.verdict-best    { background:var(--color-emerald-light); color:var(--color-emerald-dark); border:1px solid var(--color-emerald-mid); }
+.verdict-partial { background:var(--color-amber-light);   color:var(--color-amber-dark);   border:1px solid var(--color-amber-mid); }
+.verdict-poor    { background:var(--color-red-light);     color:var(--color-red-dark);     border:1px solid var(--color-red-mid); }
+
+.approach-body {
+  padding:0 1.25rem 1rem; flex:1;
+  font-family:var(--font-mono); font-size:0.72rem; color:var(--color-text-secondary); line-height:1.65;
+}
+.approach-why { margin-top:0.75rem; padding-top:0.75rem; border-top:1px solid var(--color-border); }
+.approach-why b { color:var(--color-text-primary); }
+
+.approach-metrics {
+  border-top:1px solid var(--color-border); padding:0.75rem 1.25rem;
+  display:flex; flex-direction:column; gap:5px;
+}
+.metric-row { display:flex; align-items:center; gap:0.5rem; }
+.metric-label { font-family:var(--font-mono); font-size:0.6rem; color:var(--color-text-muted); width:80px; flex-shrink:0; }
+.metric-bar-bg { flex:1; height:6px; background:var(--color-border-light); border-radius:100px; overflow:hidden; }
+.metric-bar-fill { height:100%; border-radius:100px; transition:width 0.4s ease; }
+.metric-val { font-family:var(--font-mono); font-size:0.6rem; color:var(--color-text-secondary); width:28px; text-align:right; }
+
+/* DECISION PANEL */
+.decision-panel {
+  background:var(--color-surface-alt); border:1px solid var(--color-border);
+  border-radius:var(--radius-xl); padding:1.25rem 1.5rem; margin-bottom:1.5rem;
+}
+.decision-title { font-family:var(--font-mono); font-size:0.65rem; color:var(--color-text-muted); letter-spacing:2px; margin-bottom:0.75rem; }
+.decision-text { font-size:0.85rem; color:var(--color-text-primary); line-height:1.7; }
+.decision-text b { color:var(--page-accent); }
+
+/* BOTTOM TABLE */
+.bottom-section { border-top:1px solid var(--color-border); background:var(--color-surface); padding:1.5rem 2rem; }
+.comp-table { width:100%; border-collapse:collapse; font-size:0.82rem; margin-top:0.75rem; }
+.comp-table th { background:var(--page-accent); color:white; font-family:var(--font-sans); font-weight:600; padding:0.65rem 1rem; text-align:left; }
+.comp-table th:first-child { border-radius:8px 0 0 0; }
+.comp-table th:last-child  { border-radius:0 8px 0 0; }
+.comp-table td { padding:0.6rem 1rem; border-bottom:1px solid var(--color-border-light); color:var(--color-text-secondary); line-height:1.5; vertical-align:top; }
+.comp-table tr:nth-child(even) td { background:var(--color-surface-alt); }
+td.best { color:var(--color-emerald-dark); font-weight:600; }
+td.worst { color:var(--color-red-dark); }
+
+/* DECISION FLOW */
+.decision-flow { display:flex; align-items:center; gap:0; flex-wrap:wrap; margin-top:1rem; }
+.flow-node {
+  background:var(--color-surface); border:1px solid var(--color-border);
+  border-radius:var(--radius-md); padding:0.6rem 1rem;
+  font-family:var(--font-mono); font-size:0.72rem; color:var(--color-text-secondary);
+  text-align:center;
+}
+.flow-node.start  { background:var(--color-cyan-light); border-color:var(--page-accent); color:var(--color-cyan); font-weight:600; }
+.flow-node.prompt { background:var(--color-amber-light); border-color:var(--color-amber-mid); color:var(--color-amber-deeper); }
+.flow-node.rag    { background:var(--color-emerald-light); border-color:var(--color-emerald-mid); color:var(--color-emerald-deeper); }
+.flow-node.ft     { background:var(--color-violet-light); border-color:var(--color-indigo-mid); color:var(--color-indigo-deeper); }
+.flow-arrow { font-size:1.1rem; color:var(--color-connector); padding:0 4px; flex-shrink:0; }
+.flow-cond  { font-family:var(--font-mono); font-size:0.62rem; color:var(--color-text-muted); padding:0 4px; }
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html">← Demos</a>
+  <span class="nav-sep">/</span>
+  <span class="cur">Prompt vs RAG vs Fine-Tuning</span>
+</nav>
+
+<div class="page-header">
+  <h1>Prompt Engineering vs RAG vs <span>Fine-Tuning</span></h1>
+  <div class="subtitle">// Three ways to make an LLM know what you need it to know. Pick a scenario to see which is right — and why.</div>
+</div>
+
+<div style="padding:1.5rem 2rem;">
+
+  <!-- Scenario picker -->
+  <div class="section-label" style="margin-bottom:0.5rem">PICK A REAL-WORLD SCENARIO</div>
+  <div class="scenarios" id="scenarios"></div>
+
+  <!-- Decision summary -->
+  <div class="decision-panel" id="decision-panel"></div>
+
+  <!-- Three approach cards -->
+  <div class="approach-grid" id="approach-grid"></div>
+
+</div>
+
+<!-- BOTTOM: comparison table + decision flow -->
+<div class="bottom-section">
+  <div style="font-size:1.05rem;font-weight:700;color:var(--color-text-primary);letter-spacing:-0.01em;">Full Comparison</div>
+  <table class="comp-table">
+    <tr><th>Criterion</th><th>Prompt Engineering</th><th>RAG</th><th>Fine-Tuning</th></tr>
+    <tr><td>Setup time</td><td class="best">Hours</td><td>Days–weeks</td><td class="worst">Weeks–months</td></tr>
+    <tr><td>Cost</td><td class="best">Near zero</td><td>Moderate (vector DB + embedding API)</td><td class="worst">$50–$500K+ depending on model size</td></tr>
+    <tr><td>Knowledge freshness</td><td class="best">Instant (in-prompt)</td><td class="best">Near real-time (re-index)</td><td class="worst">Stale until retrained</td></tr>
+    <tr><td>Max knowledge size</td><td class="worst">Context window only</td><td class="best">Unlimited (entire knowledge base)</td><td class="best">Baked into weights</td></tr>
+    <tr><td>Auditability</td><td class="best">Full (you see the prompt)</td><td class="best">Full (citations from retrieval)</td><td>Partial — weights are a black box</td></tr>
+    <tr><td>Hallucination risk</td><td>Medium (no grounding)</td><td class="best">Low (grounded in retrieved docs)</td><td class="worst">Lower in-domain; higher out-of-distribution</td></tr>
+    <tr><td>Best for</td><td>Prototyping, simple bounded tasks</td><td>Knowledge-intensive Q&A, policy lookups</td><td>Format / style / behaviour consistency</td></tr>
+  </table>
+
+  <div style="margin-top:1.5rem;font-size:1.05rem;font-weight:700;color:var(--color-text-primary);letter-spacing:-0.01em;">Decision Framework</div>
+  <div style="font-family:var(--font-mono);font-size:0.72rem;color:var(--color-text-muted);margin-bottom:0.75rem">// Start cheap. Add complexity only when you hit the limit.</div>
+  <div class="decision-flow">
+    <div class="flow-node start">New requirement</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node prompt">Try Prompt Engineering first<br><span style="font-size:0.6rem;opacity:0.7">free · instant</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-cond">Knowledge too large<br>for context window?</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node rag">Add RAG<br><span style="font-size:0.6rem;opacity:0.7">moderate cost</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-cond">Behaviour/format<br>still inconsistent?</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node ft">Add Fine-Tuning<br><span style="font-size:0.6rem;opacity:0.7">high cost</span></div>
+  </div>
+  <div style="margin-top:0.75rem;padding:0.75rem 1rem;background:var(--color-surface-alt);border:1px solid var(--color-border);border-radius:var(--radius-md);font-family:var(--font-mono);font-size:0.72rem;color:var(--color-text-secondary);line-height:1.6">
+    <b style="color:var(--color-text-primary)">The winning pattern:</b> Fine-tune for <em>behaviour and tone</em>, RAG for <em>factual knowledge</em>, prompt engineering for <em>task-specific instructions</em>. Never fine-tune as a substitute for RAG on frequently-changing factual knowledge.
+  </div>
+</div>
+
+<script>
+const SCENARIOS = [
+  {
+    id: 'classify',
+    label: 'Complaint Classification',
+    decision: 'Use <b>Prompt Engineering</b>. The task is simple and well-bounded — classify into 5 categories. The category list fits easily in a prompt. Zero infrastructure needed. Start here.',
+    approaches: {
+      prompt: {
+        verdict:'best', vText:'✓ Best choice',
+        why:'Task is fully specified in the prompt: 5 categories, clear rules. Fits in ~200 tokens. Zero infrastructure, deployable in hours.',
+        metrics:{ speed:95, cost:98, accuracy:85, maintenance:95 }
+      },
+      rag: {
+        verdict:'poor', vText:'✗ Overkill',
+        why:'No retrieval needed — the classification rules are short enough to include directly in the prompt. Adding RAG adds latency and cost for no benefit.',
+        metrics:{ speed:70, cost:60, accuracy:87, maintenance:65 }
+      },
+      ft: {
+        verdict:'poor', vText:'✗ Overkill',
+        why:'Fine-tuning is for behaviour change, not simple rule-following. Weeks of work to achieve what a 200-token prompt does immediately.',
+        metrics:{ speed:90, cost:5, accuracy:88, maintenance:30 }
+      }
+    }
+  },
+  {
+    id: 'policy',
+    label: 'Policy Q&A Bot',
+    decision: 'Use <b>RAG</b>. Your policy knowledge base is hundreds of pages — far too large for a prompt. RAG retrieves only the relevant sections at query time and grounds every answer in your documents.',
+    approaches: {
+      prompt: {
+        verdict:'poor', vText:'✗ Won\'t scale',
+        why:'A 500-page policy document won\'t fit in a context window. Even if it did, burying the LLM in irrelevant text degrades accuracy. Not viable.',
+        metrics:{ speed:90, cost:90, accuracy:30, maintenance:80 }
+      },
+      rag: {
+        verdict:'best', vText:'✓ Best choice',
+        why:'Pre-index the policy docs. At runtime, retrieve only the 3–5 most relevant sections for each question. Accurate, auditable, updatable without retraining.',
+        metrics:{ speed:75, cost:70, accuracy:92, maintenance:80 }
+      },
+      ft: {
+        verdict:'partial', vText:'~ Partial fit',
+        why:'Fine-tuning can teach the model domain vocabulary, but knowledge becomes stale as policy changes. Hallucination risk remains. Combine with RAG for best results.',
+        metrics:{ speed:85, cost:20, accuracy:70, maintenance:35 }
+      }
+    }
+  },
+  {
+    id: 'tone',
+    label: 'Brand Tone Consistency',
+    decision: 'Use <b>Fine-Tuning</b>. Tone and style are behaviour, not facts. RAG can\'t inject consistent tone. A system prompt helps but drifts across long conversations. Fine-tuning bakes the voice into the model permanently.',
+    approaches: {
+      prompt: {
+        verdict:'partial', vText:'~ Partial fit',
+        why:'A detailed system prompt helps, but tone drifts across long conversations and varies across users. Not robust enough for production brand consistency.',
+        metrics:{ speed:95, cost:95, accuracy:55, maintenance:70 }
+      },
+      rag: {
+        verdict:'poor', vText:'✗ Wrong tool',
+        why:'RAG retrieves facts. It cannot inject consistent tone or communication style. Irrelevant for this use case.',
+        metrics:{ speed:75, cost:60, accuracy:20, maintenance:55 }
+      },
+      ft: {
+        verdict:'best', vText:'✓ Best choice',
+        why:'Fine-tuning on 500–1,000 examples of brand-approved responses permanently changes the model\'s output style. Consistent across all queries, users, and conversation lengths.',
+        metrics:{ speed:88, cost:25, accuracy:92, maintenance:70 }
+      }
+    }
+  },
+  {
+    id: 'rates',
+    label: 'Live Rate Queries',
+    decision: 'Use <b>RAG with frequent re-indexing</b>. Rates change daily. Fine-tuning is always stale. Prompt engineering can\'t hold an entire rate sheet reliably. RAG over a live-updated rate document is the only viable approach.',
+    approaches: {
+      prompt: {
+        verdict:'partial', vText:'~ Works for small sets',
+        why:'If you only have 5–10 rates, include them in the system prompt and update it daily. Breaks down at scale or if rates change intraday.',
+        metrics:{ speed:95, cost:90, accuracy:65, maintenance:55 }
+      },
+      rag: {
+        verdict:'best', vText:'✓ Best choice',
+        why:'Index a rate sheet document that updates daily (or in real-time). Every query retrieves the current rate. Zero retraining required when rates change.',
+        metrics:{ speed:75, cost:70, accuracy:95, maintenance:85 }
+      },
+      ft: {
+        verdict:'poor', vText:'✗ Always stale',
+        why:'Fine-tuning takes weeks. By the time it\'s done, the rates have changed. Training data has a cutoff — the model will confidently answer with outdated rates.',
+        metrics:{ speed:82, cost:5, accuracy:20, maintenance:10 }
+      }
+    }
+  },
+  {
+    id: 'combined',
+    label: 'Customer Service Bot',
+    decision: 'Use <b>all three combined</b>. Fine-tune for DBS communication style and tone. RAG over the product knowledge base and policy docs. System prompt for complaint-handling workflow and safety rules.',
+    approaches: {
+      prompt: {
+        verdict:'partial', vText:'~ Necessary but not enough',
+        why:'System prompt sets the workflow and safety rules. Essential — but alone it can\'t hold the full product knowledge base or enforce consistent tone.',
+        metrics:{ speed:95, cost:90, accuracy:50, maintenance:70 }
+      },
+      rag: {
+        verdict:'partial', vText:'~ Necessary but not enough',
+        why:'Retrieves accurate product and policy facts. Essential for grounding — but doesn\'t fix tone inconsistency or workflow compliance without a system prompt.',
+        metrics:{ speed:72, cost:65, accuracy:82, maintenance:78 }
+      },
+      ft: {
+        verdict:'partial', vText:'~ Necessary but not enough',
+        why:'Bakes in brand voice and domain vocabulary. Essential for quality — but knowledge becomes stale without RAG, and safety rules still need a system prompt.',
+        metrics:{ speed:85, cost:25, accuracy:75, maintenance:65 }
+      }
+    }
+  }
+];
+
+const APPROACH_META = {
+  prompt: { label:'APPROACH 1', title:'Prompt Engineering',  color:'#f59e0b', barColor:'#f59e0b' },
+  rag:    { label:'APPROACH 2', title:'RAG',                 color:'#10b981', barColor:'#10b981' },
+  ft:     { label:'APPROACH 3', title:'Fine-Tuning',         color:'#8b5cf6', barColor:'#8b5cf6' },
+};
+const METRIC_LABELS = { speed:'Speed', cost:'Low cost', accuracy:'Accuracy', maintenance:'Maintainability' };
+
+let current = 0;
+
+function renderScenarios() {
+  document.getElementById('scenarios').innerHTML = SCENARIOS.map((s,i)=>
+    `<button class="sc-btn ${i===0?'active':''}" onclick="selectScenario(${i},this)">${s.label}</button>`
+  ).join('');
+}
+
+function selectScenario(i, el) {
+  current = i;
+  document.querySelectorAll('.sc-btn').forEach((b,j)=>b.classList.toggle('active',j===i));
+  render();
+}
+
+function render() {
+  const sc = SCENARIOS[current];
+
+  document.getElementById('decision-panel').innerHTML = `
+    <div class="decision-title">RECOMMENDATION</div>
+    <div class="decision-text">${sc.decision}</div>
+  `;
+
+  document.getElementById('approach-grid').innerHTML = ['prompt','rag','ft'].map(key => {
+    const meta = APPROACH_META[key];
+    const ap   = sc.approaches[key];
+    const vcls = ap.verdict === 'best' ? 'verdict-best' : ap.verdict === 'partial' ? 'verdict-partial' : 'verdict-poor';
+    const acls = ap.verdict === 'best' ? 'recommended' : ap.verdict === 'partial' ? 'partial' : 'poor';
+
+    const bars = Object.entries(ap.metrics).map(([k,v])=>`
+      <div class="metric-row">
+        <div class="metric-label">${METRIC_LABELS[k]}</div>
+        <div class="metric-bar-bg"><div class="metric-bar-fill" style="width:${v}%;background:${meta.barColor}"></div></div>
+        <div class="metric-val">${v}%</div>
+      </div>
+    `).join('');
+
+    return `
+      <div class="approach-card ${acls}">
+        <div class="approach-header" style="background:${meta.barColor}18;border-bottom:1px solid ${meta.barColor}30">
+          <div class="approach-label" style="color:${meta.barColor}">${meta.label}</div>
+          <div class="approach-title" style="color:${meta.barColor}">${meta.title}</div>
+          <div class="approach-verdict ${vcls}">${ap.vText}</div>
+        </div>
+        <div class="approach-body">
+          <div class="approach-why"><b>Why:</b> ${ap.why}</div>
+        </div>
+        <div class="approach-metrics">${bars}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+renderScenarios();
+render();
+</script>
+</body>
+</html>

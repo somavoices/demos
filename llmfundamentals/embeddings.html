@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Embedding Space Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<style>
+:root { --page-accent: #4f46e5; }
+body { display:flex; flex-direction:column; }
+
+.layout { display:grid; grid-template-columns:1fr 320px; flex:1; min-height:0; }
+.canvas-wrap { position:relative; overflow:hidden; background:var(--color-canvas-bg); }
+canvas { display:block; width:100%; height:100%; }
+
+.sidebar { padding:1.5rem; border-left:1px solid var(--color-border); overflow-y:auto; display:flex; flex-direction:column; gap:1rem; background:var(--color-surface); }
+.sidebar h2 { font-size:1.2rem; font-weight:700; }
+.sidebar h2 span { color:var(--page-accent); }
+
+.hint { font-family:var(--font-mono); font-size:0.72rem; color:var(--color-text-secondary); line-height:1.6; }
+.hint b { color:var(--page-accent); }
+
+.words-panel h3 { font-family:var(--font-mono); font-size:0.65rem; color:var(--color-text-muted); letter-spacing:2px; margin-bottom:0.75rem; }
+.word-item {
+  display:flex; align-items:center; gap:0.5rem;
+  padding:0.4rem 0.6rem; border-radius:6px; margin-bottom:4px;
+  font-family:var(--font-mono); font-size:0.8rem;
+  cursor:pointer; transition:all 0.15s; border:1px solid transparent;
+}
+.word-item:hover, .word-item.selected { border-color: currentColor; background:rgba(0,0,0,0.03); }
+.word-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+.arithmetic {
+  background:var(--color-indigo-light); border:1px solid var(--color-indigo-100);
+  border-radius:10px; padding:1rem;
+  font-family:var(--font-mono); font-size:0.8rem; color:var(--color-indigo-dark);
+}
+.arithmetic .eq { font-size:1rem; color:var(--color-indigo-deeper); margin-bottom:0.5rem; }
+.arithmetic .result { color:var(--page-accent); font-weight:700; font-size:1.1rem; }
+
+.cluster-legend { display:flex; flex-direction:column; gap:0.5rem; }
+.cluster-item { display:flex; align-items:center; gap:0.5rem; font-family:var(--font-mono); font-size:0.75rem; }
+.cluster-swatch { width:12px; height:12px; border-radius:3px; }
+
+.info-box {
+  background:var(--color-surface-alt); border:1px solid var(--color-border); border-radius:8px;
+  padding:0.75rem; font-family:var(--font-mono); font-size:0.72rem; color:var(--color-text-secondary); line-height:1.6;
+}
+.info-box b { color:var(--page-accent); }
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html">← Demos</a>
+  <span class="nav-sep">/</span>
+  <span class="cur">Embedding Space</span>
+</nav>
+
+<div class="layout">
+  <div class="canvas-wrap">
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <div class="sidebar">
+    <div>
+      <h2>Embedding <span>Space</span></h2>
+      <p class="hint" style="margin-top:0.5rem">Words projected to 2D. <b>Similar meaning = close together.</b> Drag any word. Click to select. Scores shown are proximity indices — see the <a href="cosine.html" style="color:#6366f1">Cosine demo</a> for the actual similarity formula.</p>
+    </div>
+
+    <div class="arithmetic">
+      <div class="eq">king − man + woman ≈</div>
+      <div class="result">queen ✓</div>
+      <div style="font-size:0.7rem;color:#6b7280;margin-top:0.5rem">Gender is a consistent direction in embedding space</div>
+    </div>
+
+    <div>
+      <div class="words-panel">
+        <h3>WORDS IN SPACE</h3>
+        <div id="word-list"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="cluster-legend">
+        <div class="cluster-item"><div class="cluster-swatch" style="background:#818cf8"></div> Royalty / Social roles</div>
+        <div class="cluster-item"><div class="cluster-swatch" style="background:#34d399"></div> Banking / Finance</div>
+        <div class="cluster-item"><div class="cluster-swatch" style="background:#f59e0b"></div> Ambiguous / Context-dependent</div>
+        <div class="cluster-item"><div class="cluster-swatch" style="background:#f43f5e"></div> Unrelated domains</div>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <b>Proximity = meaning</b><br>
+      "loan" ↔ "credit": <b style="color:#34d399">close</b><br>
+      "loan" ↔ "sunset": <b style="color:#f43f5e">far</b><br><br>
+      The score shown is a <em>proximity index</em> derived from 2D position — not true cosine similarity (which requires the full high-dimensional vector). See the <a href="cosine.html" style="color:#6366f1">Cosine demo</a> for the real formula.<br><br>
+      Context changes embeddings:<br>
+      "default" (banking) ≠ "default" (software)
+    </div>
+  </div>
+</div>
+
+<!-- ── VECTOR ARITHMETIC SECTION ─────────────────────────────── -->
+<div class="panel-bottom" style="border-top:1px solid var(--color-border); padding:1.5rem 2rem;">
+
+  <div style="font-size:1.1rem;font-weight:700;color:var(--color-text-primary);margin-bottom:0.2rem;letter-spacing:-0.01em;">
+    Vector Arithmetic — The Geometry of Meaning
+  </div>
+  <div style="font-family:var(--font-mono);font-size:0.75rem;color:var(--color-text-muted);margin-bottom:1.25rem;">
+    // Subtract one concept, add another, land on a third. Arithmetic on vectors = reasoning about meaning.
+  </div>
+
+  <!-- Tab buttons -->
+  <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem;" id="va-tabs">
+    <button class="va-tab active" onclick="showVA(0,this)">Royalty + Gender</button>
+    <button class="va-tab" onclick="showVA(1,this)">Profession + Gender</button>
+    <button class="va-tab" onclick="showVA(2,this)">Country + Capital</button>
+    <button class="va-tab" onclick="showVA(3,this)">Verb Morphology</button>
+    <button class="va-tab" onclick="showVA(4,this)">Comparative</button>
+    <button class="va-tab" onclick="showVA(5,this)">Banking Domain</button>
+  </div>
+
+  <div id="va-panel" style="background:var(--color-surface-alt);border:1px solid var(--color-border);border-radius:var(--radius-xl);padding:1.25rem 1.5rem;"></div>
+
+  <div style="margin-top:1rem;padding:0.85rem 1rem;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);font-family:var(--font-mono);font-size:0.72rem;color:var(--color-text-secondary);line-height:1.6;">
+    <b style="color:var(--color-text-primary)">Why this matters beyond party tricks:</b>
+    This geometry powers semantic search and RAG. When a RM asks "business liquidity options", the embedding maps it near "corporate deposit" and "cash management" — even without those exact words — because the model learned product-scope arithmetic from millions of financial documents.
+  </div>
+</div>
+
+<style>
+.va-tab {
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-md); padding: 5px 14px;
+  font-family: var(--font-mono); font-size: 0.72rem;
+  color: var(--color-text-secondary); cursor: pointer; transition: all 0.15s;
+}
+.va-tab:hover { border-color: var(--color-indigo); color: var(--color-indigo); }
+.va-tab.active { background: var(--color-indigo-light); border-color: var(--color-indigo); color: var(--color-indigo-dark); font-weight: 600; }
+.va-bias { background: var(--color-red-light); border: 1px solid var(--color-red-mid); border-radius: var(--radius-md); padding: 0.5rem 0.85rem; font-family: var(--font-mono); font-size: 0.72rem; color: var(--color-red-dark); margin-bottom: 1rem; }
+.va-steps { display: grid; gap: 0.75rem; margin: 1rem 0; }
+.va-step { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0.75rem 1rem; }
+.va-step-word { font-family: var(--font-mono); font-size: 1rem; font-weight: 700; margin-bottom: 0.4rem; }
+.va-step-desc { font-size: 0.78rem; color: var(--color-text-secondary); line-height: 1.5; margin-bottom: 0.6rem; }
+.va-bars { display: flex; gap: 6px; align-items: flex-end; height: 48px; }
+.va-bar-col { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1; }
+.va-bar { width: 100%; border-radius: 3px 3px 0 0; min-height: 2px; transition: height 0.3s; }
+.va-bar-label { font-family: var(--font-mono); font-size: 0.52rem; color: var(--color-text-muted); text-align: center; line-height: 1.3; }
+.va-insight { background: var(--color-indigo-light); border: 1px solid var(--color-indigo-100); border-radius: var(--radius-md); padding: 0.85rem 1rem; font-family: var(--font-mono); font-size: 0.72rem; color: var(--color-indigo-deeper); line-height: 1.6; }
+@media (min-width: 700px) { .va-steps { grid-template-columns: repeat(4, 1fr); } }
+</style>
+
+<script>
+const VA_EXAMPLES = [
+  {
+    title: 'Royalty + Gender',
+    equation: 'King − Man + Woman ≈ Queen',
+    colour: '#6366f1',
+    bias: null,
+    dims: ['Royalty', 'Power', 'Female-gender', 'Formality'],
+    steps: [
+      { word: 'King',    vec: [0.91, 0.88, 0.08, 0.82], desc: 'Very high royalty, high power, low female-gender signal, high formality' },
+      { word: '− Man',   vec: [0.00, 0.00, 0.90, 0.00], desc: 'Subtract gender dimension only — royalty and power unchanged', neg: true },
+      { word: '+ Woman', vec: [0.00, 0.00, 0.89, 0.00], desc: 'Add female-gender direction — still no change to royalty or power' },
+      { word: '≈ Queen', vec: [0.89, 0.85, 0.86, 0.80], desc: 'High royalty + high power + high female-gender = Queen ✓', result: true },
+    ],
+    insight: 'Mikolov et al. (2013, Google) demonstrated this on word2vec trained on Google News. "Royalty" and "gender" are orthogonal dimensions — the arithmetic moves precisely along the gender axis without disturbing the royalty axis. It proved embeddings encode relational structure, not just word co-occurrence.',
+  },
+  {
+    title: 'Profession + Gender (Bias)',
+    equation: 'Doctor − Man + Woman ≈ Nurse  (should be Doctor)',
+    colour: '#f97316',
+    bias: '⚠ Bias detected — the correct answer is "Doctor". This reflects statistical gender stereotypes in the training corpus (Bolukbasi et al. 2016).',
+    dims: ['Medical expertise', 'Seniority', 'Female-gender', 'Clinical care'],
+    steps: [
+      { word: 'Doctor',  vec: [0.88, 0.82, 0.11, 0.75], desc: 'High expertise, high authority, low female-association in training data' },
+      { word: '− Man',   vec: [0.00, 0.00, 0.88, 0.00], desc: 'Subtract male-gender dimension', neg: true },
+      { word: '+ Woman', vec: [0.00, 0.00, 0.87, 0.00], desc: 'Add female-gender dimension' },
+      { word: '≈ Nurse', vec: [0.82, 0.45, 0.85, 0.88], desc: 'Expertise + female + care = Nurse — not Doctor. The bias is explicit.', result: true, warn: true },
+    ],
+    insight: 'Documented by Bolukbasi et al. (2016). The fair answer is "Doctor" — profession should be gender-neutral. But word2vec, GloVe and early GPT-3 all produce "Nurse" because decades of job ads statistically paired female + medical + care with nursing. The model learned historical reality, not ideal fairness.',
+  },
+  {
+    title: 'Country + Capital',
+    equation: 'Paris − France + Germany ≈ Berlin',
+    colour: '#0891b2',
+    bias: null,
+    dims: ['Capital-city signal', 'Country identity', 'European context', 'Urban density'],
+    steps: [
+      { word: 'Paris',    vec: [0.90, 0.88, 0.85, 0.80], desc: 'Strong capital-city, strongly French, European, major urban' },
+      { word: '− France', vec: [0.00, 0.87, 0.00, 0.00], desc: 'Remove French country identity — capital signal stays', neg: true },
+      { word: '+ Germany',vec: [0.00, 0.86, 0.00, 0.00], desc: 'Add German country identity' },
+      { word: '≈ Berlin', vec: [0.88, 0.85, 0.83, 0.78], desc: 'Capital-city + Germany + European = Berlin ✓', result: true },
+    ],
+    insight: 'Capital–country is one of the most reliable analogy pairs in embedding space — documented consistently from word2vec (2013) through modern LLMs. Works reliably for major economies. Degrades for smaller, less-documented nations — a coverage bias, not a conceptual failure.',
+  },
+  {
+    title: 'Verb Morphology',
+    equation: 'Swimming − Swim + Walk ≈ Walking',
+    colour: '#10b981',
+    bias: null,
+    dims: ['Motion verb family', 'Base-form signal', 'Progressive (-ing)', 'Speed/effort'],
+    steps: [
+      { word: 'Swimming', vec: [0.82, 0.78, 0.90, 0.62], desc: 'Swim-family word, strong -ing progressive marker' },
+      { word: '− Swim',   vec: [0.80, 0.77, 0.00, 0.60], desc: 'Remove swim root — progressive suffix direction remains', neg: true },
+      { word: '+ Walk',   vec: [0.78, 0.75, 0.00, 0.55], desc: 'Add walk root in base form' },
+      { word: '≈ Walking',vec: [0.80, 0.76, 0.88, 0.57], desc: 'Walk-family + progressive marker = Walking ✓', result: true },
+    ],
+    insight: 'Morphological inflection is encoded as consistent offset vectors. The "-ing progressive" direction points the same way for swim→swimming, walk→walking, run→running. LLMs can correctly inflect rare words because the morphological direction is learned structurally, not memorised per word. (Mikolov et al. 2013)',
+  },
+  {
+    title: 'Comparative / Superlative',
+    equation: 'Bigger − Big + Tall ≈ Taller',
+    colour: '#8b5cf6',
+    bias: null,
+    dims: ['Base adjective', 'Comparative degree', 'Superlative degree', 'Physical scale'],
+    steps: [
+      { word: 'Bigger',  vec: [0.85, 0.88, 0.10, 0.80], desc: 'Size adjective, strong comparative degree, high physical-scale' },
+      { word: '− Big',   vec: [0.83, 0.00, 0.00, 0.78], desc: 'Remove "big" base — comparative direction stays', neg: true },
+      { word: '+ Tall',  vec: [0.84, 0.00, 0.00, 0.82], desc: 'Add "tall" base adjective (different physical dimension)' },
+      { word: '≈ Taller',vec: [0.86, 0.86, 0.12, 0.84], desc: 'Tall base + comparative degree = Taller ✓', result: true },
+    ],
+    insight: 'Grammatical degree (positive → comparative → superlative) is a clean offset direction. The comparative offset transfers from "bigger" to "taller" reliably. Fast→Faster, Strong→Stronger, Bright→Brighter all share the same offset vector — grammatical morphology is geometry, not lookup.',
+  },
+  {
+    title: 'Banking Domain',
+    equation: 'Savings − Personal + Business ≈ Corporate Deposit',
+    colour: '#059669',
+    bias: null,
+    dims: ['Deposit product', 'Retail scope', 'Corporate scope', 'Yield signal'],
+    steps: [
+      { word: 'Savings',        vec: [0.90, 0.85, 0.12, 0.72], desc: 'Strong deposit product, high retail, low corporate, moderate yield' },
+      { word: '− Personal',     vec: [0.00, 0.84, 0.00, 0.00], desc: 'Remove retail/personal scope dimension', neg: true },
+      { word: '+ Business',     vec: [0.00, 0.00, 0.86, 0.00], desc: 'Add corporate/business scope dimension' },
+      { word: '≈ Corp. Deposit',vec: [0.88, 0.05, 0.84, 0.74], desc: 'Deposit + corporate scope + yield = Corporate Deposit ✓', result: true },
+    ],
+    insight: 'Domain-specific arithmetic underpins RAG retrieval. When a RM asks "business liquidity management options", the embedding maps it near "corporate deposit" and "cash management" — even without those exact words — because the model learned product-scope arithmetic from millions of financial documents.',
+  },
+];
+
+function showVA(idx, el) {
+  document.querySelectorAll('.va-tab').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  const ex = VA_EXAMPLES[idx];
+
+  let html = `
+    <div style="font-family:var(--font-mono);font-size:1rem;font-weight:700;color:${ex.colour};margin-bottom:0.75rem">${ex.equation}</div>
+    ${ex.bias ? `<div class="va-bias">${ex.bias}</div>` : ''}
+    <div class="va-steps">
+  `;
+
+  ex.steps.forEach(s => {
+    const isResult = s.result;
+    const isNeg = s.neg;
+    const borderCol = isResult ? ex.colour : isNeg ? 'var(--color-red-mid)' : 'var(--color-border)';
+    const bgCol = isResult ? `${ex.colour}12` : 'var(--color-surface)';
+
+    html += `<div class="va-step" style="border-color:${borderCol};background:${bgCol}">
+      <div class="va-step-word" style="color:${isResult ? ex.colour : isNeg ? 'var(--color-red-dark)' : 'var(--color-text-primary)'}">${s.word}</div>
+      <div class="va-step-desc">${s.desc}</div>
+      <div class="va-bars">`;
+
+    s.vec.forEach((v, i) => {
+      const h = Math.max(3, v * 44);
+      const dimColors = ['#6366f1','#f59e0b','#10b981','#8b5cf6'];
+      html += `<div class="va-bar-col">
+        <div class="va-bar" style="height:${h}px;background:${dimColors[i]};opacity:${0.4 + v * 0.6}"></div>
+        <div class="va-bar-label">${ex.dims[i]}</div>
+      </div>`;
+    });
+
+    html += `</div></div>`;
+  });
+
+  html += `</div><div class="va-insight"><b style="color:var(--color-indigo)">Research note:</b> ${ex.insight}</div>`;
+  document.getElementById('va-panel').innerHTML = html;
+}
+
+// Init first tab
+showVA(0, document.querySelector('.va-tab'));
+</script>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+const WORDS = [
+  // Royalty cluster
+  { word:'king',     x:0.22, y:0.22, color:'#818cf8', group:'royalty' },
+  { word:'queen',    x:0.28, y:0.18, color:'#818cf8', group:'royalty' },
+  { word:'prince',   x:0.19, y:0.30, color:'#818cf8', group:'royalty' },
+  { word:'man',      x:0.32, y:0.28, color:'#a78bfa', group:'royalty' },
+  { word:'woman',    x:0.26, y:0.34, color:'#a78bfa', group:'royalty' },
+
+  // Finance cluster
+  { word:'loan',     x:0.68, y:0.28, color:'#34d399', group:'finance' },
+  { word:'credit',   x:0.74, y:0.24, color:'#34d399', group:'finance' },
+  { word:'mortgage', x:0.71, y:0.35, color:'#34d399', group:'finance' },
+  { word:'debt',     x:0.77, y:0.32, color:'#34d399', group:'finance' },
+  { word:'interest', x:0.65, y:0.38, color:'#34d399', group:'finance' },
+  { word:'KYC',      x:0.80, y:0.26, color:'#34d399', group:'finance' },
+  { word:'AML',      x:0.79, y:0.38, color:'#34d399', group:'finance' },
+
+  // Ambiguous
+  { word:'bank',     x:0.50, y:0.45, color:'#f59e0b', group:'ambiguous' },
+  { word:'default',  x:0.52, y:0.55, color:'#f59e0b', group:'ambiguous' },
+
+  // Unrelated
+  { word:'sunset',   x:0.15, y:0.72, color:'#f43f5e', group:'other' },
+  { word:'mountain', x:0.22, y:0.78, color:'#f43f5e', group:'other' },
+  { word:'music',    x:0.80, y:0.75, color:'#f43f5e', group:'other' },
+];
+
+let W, H;
+let dragging = null, selected = null;
+let dragOffX, dragOffY;
+let animFrame = 0;
+
+function resize() {
+  const wrap = canvas.parentElement;
+  const dpr = window.devicePixelRatio || 1;
+  W = wrap.clientWidth;
+  H = wrap.clientHeight;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  draw();
+}
+
+function toScreen(px, py) {
+  return { x: px * W, y: py * H };
+}
+function toNorm(sx, sy) {
+  return { x: sx / W, y: sy / H };
+}
+
+function dist(a, b) {
+  const ap = toScreen(a.x, a.y);
+  const bp = toScreen(b.x, b.y);
+  return Math.sqrt((ap.x-bp.x)**2 + (ap.y-bp.y)**2);
+}
+
+// Proximity score derived from 2D canvas distance — NOT true cosine similarity.
+// True cosine similarity requires the full high-dimensional embedding vectors.
+function proxScore(a, b) {
+  const d = dist(a, b);
+  const maxDist = Math.sqrt(W*W + H*H);
+  return Math.max(0, +(1 - d/maxDist*2.5).toFixed(2));
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  // Background grid
+  ctx.strokeStyle = 'rgba(0,0,0,0.05)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 60) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y = 0; y < H; y += 60) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+  // Draw cluster halos
+  const clusters = {};
+  WORDS.forEach(w => {
+    if (!clusters[w.group]) clusters[w.group] = [];
+    clusters[w.group].push(w);
+  });
+  Object.entries(clusters).forEach(([g, words]) => {
+    if (words.length < 2) return;
+    let cx = 0, cy = 0;
+    words.forEach(w => { cx += w.x; cy += w.y; });
+    cx /= words.length; cy /= words.length;
+    let maxR = 0;
+    words.forEach(w => {
+      const sp = toScreen(w.x, w.y);
+      const cp = toScreen(cx, cy);
+      maxR = Math.max(maxR, Math.sqrt((sp.x-cp.x)**2+(sp.y-cp.y)**2));
+    });
+    const color = words[0].color;
+    const cp = toScreen(cx, cy);
+    const gradient = ctx.createRadialGradient(cp.x, cp.y, maxR*0.3, cp.x, cp.y, maxR*1.4);
+    gradient.addColorStop(0, color + '18');
+    gradient.addColorStop(1, 'transparent');
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(cp.x, cp.y, maxR * 1.4, 0, Math.PI*2);
+    ctx.fill();
+  });
+
+  // Lines from selected word
+  if (selected) {
+    const sp = toScreen(selected.x, selected.y);
+    WORDS.forEach(w => {
+      if (w === selected) return;
+      const wp = toScreen(w.x, w.y);
+      const sim = proxScore(selected, w);
+      if (sim > 0.05) {
+        ctx.strokeStyle = `rgba(${hexToRgb(selected.color)},${sim * 0.8})`;
+        ctx.lineWidth = sim * 3;
+        ctx.setLineDash([]);
+        ctx.beginPath(); ctx.moveTo(sp.x, sp.y); ctx.lineTo(wp.x, wp.y); ctx.stroke();
+      }
+    });
+  }
+
+  // Draw words
+  WORDS.forEach(w => {
+    const p = toScreen(w.x, w.y);
+    const isSelected = w === selected;
+    const isHovered = false;
+
+    // Glow
+    const glowR = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, isSelected ? 30 : 20);
+    glowR.addColorStop(0, w.color + (isSelected ? '60' : '30'));
+    glowR.addColorStop(1, 'transparent');
+    ctx.fillStyle = glowR;
+    ctx.beginPath(); ctx.arc(p.x, p.y, isSelected ? 30 : 20, 0, Math.PI*2); ctx.fill();
+
+    // Dot
+    ctx.fillStyle = w.color;
+    ctx.beginPath(); ctx.arc(p.x, p.y, isSelected ? 10 : 7, 0, Math.PI*2); ctx.fill();
+
+    if (isSelected) {
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([]);
+      ctx.stroke();
+    }
+
+    // Label
+    ctx.font = `${isSelected ? '600 ' : ''}13px 'Fira Code', monospace`;
+    ctx.fillStyle = isSelected ? '#111827' : w.color;
+    ctx.textAlign = 'left';
+    ctx.fillText(w.word, p.x + 13, p.y + 5);
+
+    // Similarity score when selected
+    if (selected && w !== selected) {
+      const sim = proxScore(selected, w);
+      if (sim > 0.2) {
+        ctx.font = '10px Fira Code, monospace';
+        ctx.fillStyle = `rgba(${hexToRgb(w.color)},0.9)`;
+        ctx.fillText(sim.toFixed(2), p.x + 13, p.y + 18);
+      }
+    }
+  });
+
+  ctx.setLineDash([]);
+}
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `${r},${g},${b}`;
+}
+
+// Mouse events
+function getWord(mx, my) {
+  for (const w of WORDS) {
+    const p = toScreen(w.x, w.y);
+    if (Math.sqrt((mx-p.x)**2+(my-p.y)**2) < 16) return w;
+  }
+  return null;
+}
+
+canvas.addEventListener('mousedown', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const w = getWord(mx, my);
+  if (w) { dragging = w; dragOffX = mx - w.x*W; dragOffY = my - w.y*H; selected = w; }
+  else selected = null;
+  draw(); updateList();
+});
+
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  if (dragging) {
+    dragging.x = Math.max(0.05, Math.min(0.95, (mx - dragOffX) / W));
+    dragging.y = Math.max(0.05, Math.min(0.95, (my - dragOffY) / H));
+    draw(); updateList();
+  }
+  canvas.style.cursor = getWord(mx, my) ? 'grab' : 'default';
+});
+
+canvas.addEventListener('mouseup', () => { dragging = null; });
+canvas.addEventListener('mouseleave', () => { dragging = null; });
+
+// Touch
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const t = e.touches[0];
+  const rect = canvas.getBoundingClientRect();
+  const mx = t.clientX - rect.left, my = t.clientY - rect.top;
+  const w = getWord(mx, my);
+  if (w) { dragging = w; dragOffX = mx - w.x*W; dragOffY = my - w.y*H; selected = w; draw(); updateList(); }
+}, {passive:false});
+
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (!dragging) return;
+  const t = e.touches[0];
+  const rect = canvas.getBoundingClientRect();
+  const mx = t.clientX - rect.left, my = t.clientY - rect.top;
+  dragging.x = Math.max(0.05, Math.min(0.95, (mx - dragOffX) / W));
+  dragging.y = Math.max(0.05, Math.min(0.95, (my - dragOffY) / H));
+  draw(); updateList();
+}, {passive:false});
+
+canvas.addEventListener('touchend', () => { dragging = null; });
+
+function updateList() {
+  const list = document.getElementById('word-list');
+  let items = [...WORDS];
+  if (selected) {
+    items = items.map(w => ({ ...w, sim: proxScore(selected, w) })).sort((a,b) => b.sim - a.sim);
+  }
+  list.innerHTML = items.map(w => {
+    const simStr = selected && w !== selected ? ` <span style="opacity:0.6">${proxScore(selected, w).toFixed(2)}</span>` : '';
+    return `<div class="word-item ${w === selected ? 'selected' : ''}" style="color:${w.color}" onclick="selectWord('${w.word}')">
+      <div class="word-dot" style="background:${w.color}"></div>
+      ${w.word}${simStr}
+    </div>`;
+  }).join('');
+}
+
+function selectWord(name) {
+  selected = WORDS.find(w => w.word === name) || null;
+  draw(); updateList();
+}
+
+window.addEventListener('resize', resize);
+resize();
+updateList();
+</script>
+</body>
+</html>

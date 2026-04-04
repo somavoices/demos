@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAG Chunking Strategies</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<style>
+:root { --page-accent: #0d9488; }
+body { display:flex; flex-direction:column; }
+
+.top-grid { display:grid; grid-template-columns:1fr 320px; flex:1; min-height:0; }
+
+/* LEFT */
+.left-panel { padding:1.5rem 2rem; gap:1.25rem; }
+
+.strategy-tabs { display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1.25rem; }
+.stab {
+  background:var(--color-surface); border:1px solid var(--color-border);
+  border-radius:var(--radius-md); padding:6px 14px;
+  font-family:var(--font-mono); font-size:0.72rem;
+  color:var(--color-text-secondary); cursor:pointer; transition:all 0.18s;
+}
+.stab:hover { border-color:var(--page-accent); color:var(--page-accent); }
+.stab.active { background:var(--color-emerald-light); border-color:var(--page-accent); color:var(--color-emerald-deeper); font-weight:600; }
+
+.chunk-panel { display:none; }
+.chunk-panel.active { display:block; }
+
+.source-label { font-family:var(--font-mono); font-size:0.68rem; color:var(--color-text-muted); margin-bottom:0.75rem; }
+
+.chunk-visual {
+  background:var(--color-surface-alt); border:1px solid var(--color-border);
+  border-radius:var(--radius-lg); padding:1rem 1.25rem;
+  font-family:var(--font-mono); font-size:0.78rem; line-height:1.7;
+  margin-bottom:1rem; display:flex; flex-wrap:wrap; gap:6px; align-items:flex-start;
+}
+.chunk-visual.col { flex-direction:column; gap:8px; }
+
+.cb { padding:6px 10px; border-radius:6px; display:inline; }
+.cb1 { background:#eef2ff; border:1px solid #c7d2fe; color:#3730a3; }
+.cb2 { background:#fef9c3; border:1px solid #fde68a; color:#78350f; }
+.cb3 { background:#d1fae5; border:1px solid #a7f3d0; color:#064e3b; }
+.cb4 { background:#fce7f3; border:1px solid #f9a8d4; color:#831843; }
+.cb5 { background:#e0f2fe; border:1px solid #7dd3fc; color:#075985; }
+
+.overlap-badge {
+  display:inline-block; background:var(--color-amber-100); border:1px solid var(--color-amber-mid);
+  border-radius:var(--radius-pill); padding:1px 8px;
+  font-family:var(--font-mono); font-size:0.6rem; color:var(--color-amber-deeper);
+  vertical-align:middle; margin-right:4px;
+}
+.semantic-break {
+  font-family:var(--font-mono); font-size:0.68rem; color:var(--color-red-dark);
+  background:var(--color-red-light); border:1px solid var(--color-red-mid);
+  border-radius:var(--radius-md); padding:3px 10px; display:block;
+}
+
+.pros-cons { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem; }
+.pros, .cons {
+  border-radius:var(--radius-md); padding:0.75rem 1rem;
+  font-family:var(--font-mono); font-size:0.72rem; line-height:1.7;
+}
+.pros { background:var(--color-emerald-light); border:1px solid var(--color-emerald-mid); color:var(--color-emerald-deeper); }
+.cons { background:var(--color-red-light); border:1px solid var(--color-red-mid); color:var(--color-red-deeper); }
+.pros-label { font-weight:700; margin-bottom:0.4rem; color:var(--color-emerald-dark); }
+.cons-label { font-weight:700; margin-bottom:0.4rem; color:var(--color-red-dark); }
+.pros ul, .cons ul { padding-left:1rem; }
+.pros li, .cons li { margin-bottom:2px; }
+
+.when-box {
+  background:var(--color-surface); border:1px solid var(--color-border);
+  border-radius:var(--radius-md); padding:0.75rem 1rem;
+  font-family:var(--font-mono); font-size:0.72rem; color:var(--color-text-secondary); line-height:1.6;
+}
+.when-label { font-weight:700; color:var(--page-accent); margin-bottom:0.3rem; font-size:0.68rem; letter-spacing:1px; }
+
+/* RIGHT */
+.right-panel { gap:1rem; background:var(--color-surface-alt); border-left:1px solid var(--color-border); padding:1.5rem; overflow-y:auto; }
+
+.score-card {
+  background:var(--color-surface); border:1px solid var(--color-border);
+  border-radius:var(--radius-lg); padding:1rem;
+}
+.score-card-title { font-family:var(--font-mono); font-size:0.65rem; color:var(--color-text-muted); letter-spacing:2px; margin-bottom:0.75rem; }
+.score-row { display:flex; align-items:center; gap:0.5rem; margin-bottom:0.6rem; }
+.score-dim { font-family:var(--font-mono); font-size:0.7rem; color:var(--color-text-secondary); width:100px; flex-shrink:0; }
+.score-bar-bg { flex:1; height:8px; background:var(--color-border-light); border-radius:100px; overflow:hidden; }
+.score-bar-fill { height:100%; border-radius:100px; background:linear-gradient(90deg, var(--page-accent), var(--color-emerald-dark)); transition:width 0.4s ease; }
+.score-val { font-family:var(--font-mono); font-size:0.7rem; color:var(--page-accent); font-weight:600; width:30px; text-align:right; }
+
+.complexity-badge {
+  display:inline-block; background:var(--color-surface-alt); border:1px solid var(--color-border);
+  border-radius:var(--radius-md); padding:4px 10px;
+  font-family:var(--font-mono); font-size:0.72rem; color:var(--color-text-secondary);
+  margin-top:0.5rem;
+}
+
+/* BOTTOM */
+.bottom-table-wrap { padding:1.5rem 2rem; border-top:1px solid var(--color-border); background:var(--color-surface); overflow-x:auto; }
+.comp-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+.comp-table th {
+  background:var(--page-accent); color:white;
+  font-family:var(--font-sans); font-weight:600;
+  padding:0.65rem 1rem; text-align:left;
+}
+.comp-table th:first-child { border-radius:8px 0 0 0; }
+.comp-table th:last-child  { border-radius:0 8px 0 0; }
+.comp-table td { padding:0.6rem 1rem; border-bottom:1px solid var(--color-border-light); color:var(--color-text-secondary); line-height:1.5; }
+.comp-table tr:nth-child(even) td { background:var(--color-surface-alt); }
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html">← Demos</a>
+  <span class="nav-sep">/</span>
+  <span class="cur">Chunking Strategies</span>
+</nav>
+
+<div class="page-header">
+  <h1>RAG <span>Chunking Strategies</span></h1>
+  <div class="subtitle">// Before you can search documents, you have to slice them. How you slice changes everything.</div>
+</div>
+
+<div class="top-grid">
+
+  <div class="left-panel">
+
+    <div class="strategy-tabs">
+      <button class="stab active" onclick="showChunk('fixed',this)">① Fixed Size</button>
+      <button class="stab" onclick="showChunk('sentence',this)">② Sentence</button>
+      <button class="stab" onclick="showChunk('paragraph',this)">③ Paragraph</button>
+      <button class="stab" onclick="showChunk('overlap',this)">④ Sliding Window</button>
+      <button class="stab" onclick="showChunk('semantic',this)">⑤ Semantic</button>
+      <button class="stab" onclick="showChunk('hierarchical',this)">⑥ Hierarchical</button>
+    </div>
+
+    <!-- Fixed Size -->
+    <div class="chunk-panel active" id="panel-fixed">
+      <div class="source-label">SOURCE TEXT: DBS Personal Loan policy — split every 100 tokens, ignoring sentence/paragraph boundaries</div>
+      <div class="chunk-visual">
+        <span class="cb cb1">The DBS Personal Loan offers competitive interest rates starting from 3.88% p.a. Customers may borrow between S$1,000 and S$200,000. Loan tenure ranges from 1 to 5 years. Monthly repayments are fixed throughout the loan period. Early</span>
+        <span class="cb cb2">repayment is allowed with a fee of 1% of outstanding balance. Applicants must be Singapore Citizens or PRs aged 21 to 65 with a minimum annual income of S$20,000. Self-employed applicants require 2 years of</span>
+        <span class="cb cb3">tax records. The application process takes 3–5 business days. Approval is subject to credit assessment. All loans are subject to DBS lending guidelines and MAS regulations on responsible borrowing.</span>
+      </div>
+      <div class="pros-cons">
+        <div class="pros"><div class="pros-label">✓ PROS</div><ul><li>Simple to implement</li><li>Predictable token count</li><li>Fast processing</li></ul></div>
+        <div class="cons"><div class="cons-label">✗ CONS</div><ul><li>Splits mid-sentence ("Early | repayment")</li><li>Breaks logical units arbitrarily</li><li>Poor semantic coherence per chunk</li></ul></div>
+      </div>
+      <div class="when-box"><div class="when-label">WHEN TO USE</div>Only for quick prototypes or when text has no natural structure (raw logs, telemetry). Never for policy docs, contracts, or FAQ content.</div>
+    </div>
+
+    <!-- Sentence -->
+    <div class="chunk-panel" id="panel-sentence">
+      <div class="source-label">SOURCE TEXT: Same loan policy — split at every sentence boundary using NLP sentence detection</div>
+      <div class="chunk-visual">
+        <span class="cb cb1">The DBS Personal Loan offers competitive interest rates starting from 3.88% p.a.</span>
+        <span class="cb cb2">Customers may borrow between S$1,000 and S$200,000.</span>
+        <span class="cb cb3">Loan tenure ranges from 1 to 5 years.</span>
+        <span class="cb cb4">Monthly repayments are fixed throughout the loan period.</span>
+        <span class="cb cb5">Early repayment is allowed with a fee of 1% of outstanding balance.</span>
+        <span class="cb cb1">Applicants must be Singapore Citizens or PRs aged 21 to 65 with a minimum annual income of S$20,000.</span>
+        <span class="cb cb2">Self-employed applicants require 2 years of tax records.</span>
+      </div>
+      <div class="pros-cons">
+        <div class="pros"><div class="pros-label">✓ PROS</div><ul><li>Clean, complete sentences</li><li>Each chunk has a singular fact</li><li>High semantic coherence per chunk</li></ul></div>
+        <div class="cons"><div class="cons-label">✗ CONS</div><ul><li>Loses cross-sentence context ("it" becomes ambiguous)</li><li>Very short chunks may embed poorly</li><li>Too granular for multi-part answers</li></ul></div>
+      </div>
+      <div class="when-box"><div class="when-label">WHEN TO USE</div>FAQ databases, policy rule extraction, compliance checking where each rule is a single sentence.</div>
+    </div>
+
+    <!-- Paragraph -->
+    <div class="chunk-panel" id="panel-paragraph">
+      <div class="source-label">SOURCE TEXT: Same policy — split at paragraph/section boundaries (natural document structure preserved)</div>
+      <div class="chunk-visual col">
+        <span class="cb cb1" style="display:block"><strong>[Chunk 1 — Rates &amp; Amounts]</strong> The DBS Personal Loan offers competitive interest rates starting from 3.88% p.a. Customers may borrow between S$1,000 and S$200,000. Loan tenure ranges from 1 to 5 years. Monthly repayments are fixed throughout the loan period.</span>
+        <span class="cb cb2" style="display:block"><strong>[Chunk 2 — Early Repayment]</strong> Early repayment is allowed with a fee of 1% of outstanding balance. Partial repayments are accepted in multiples of S$500.</span>
+        <span class="cb cb3" style="display:block"><strong>[Chunk 3 — Eligibility]</strong> Applicants must be Singapore Citizens or PRs aged 21 to 65 with a minimum annual income of S$20,000. Self-employed applicants require 2 years of tax records.</span>
+      </div>
+      <div class="pros-cons">
+        <div class="pros"><div class="pros-label">✓ PROS</div><ul><li>Preserves natural topic coherence</li><li>Context within each chunk is complete</li><li>Works well for structured documents</li></ul></div>
+        <div class="cons"><div class="cons-label">✗ CONS</div><ul><li>Paragraphs vary wildly in size</li><li>Requires clean document structure</li><li>PDF/scanned docs lose paragraph markers</li></ul></div>
+      </div>
+      <div class="when-box"><div class="when-label">WHEN TO USE</div>Well-structured Word docs, policy manuals, product descriptions — the most common production choice for banking documents.</div>
+    </div>
+
+    <!-- Sliding Window -->
+    <div class="chunk-panel" id="panel-overlap">
+      <div class="source-label">STRATEGY: Fixed-size chunks with deliberate 25% overlap — each chunk shares tokens with its neighbours to prevent information loss at boundaries</div>
+      <div class="chunk-visual col">
+        <div><span class="cb cb1">The DBS Personal Loan offers rates from 3.88% p.a. Customers may borrow S$1,000–S$200,000. Tenure: 1–5 years.</span> <span style="font-family:var(--font-mono);font-size:0.65rem;color:var(--color-text-muted)">← Chunk 1 (tokens 1–100)</span></div>
+        <div><span class="overlap-badge">OVERLAP</span><span class="cb cb2">Tenure: 1–5 years. Monthly repayments fixed. Early repayment allowed with 1% fee of outstanding balance.</span> <span style="font-family:var(--font-mono);font-size:0.65rem;color:var(--color-text-muted)">← Chunk 2 (tokens 75–175)</span></div>
+        <div><span class="overlap-badge">OVERLAP</span><span class="cb cb3">1% fee of outstanding balance. Applicants must be Citizens or PRs, aged 21–65, income ≥ S$20,000.</span> <span style="font-family:var(--font-mono);font-size:0.65rem;color:var(--color-text-muted)">← Chunk 3 (tokens 150–250)</span></div>
+      </div>
+      <div class="pros-cons">
+        <div class="pros"><div class="pros-label">✓ PROS</div><ul><li>No information lost at boundaries</li><li>Cross-boundary context preserved</li><li>Best for flowing narrative text</li></ul></div>
+        <div class="cons"><div class="cons-label">✗ CONS</div><ul><li>Duplicate tokens → higher storage cost</li><li>May retrieve near-identical chunks</li><li>Need deduplication post-retrieval</li></ul></div>
+      </div>
+      <div class="when-box"><div class="when-label">WHEN TO USE</div>Annual reports, regulatory circulars, legal agreements — anywhere a key fact might sit at the boundary between two fixed chunks. Industry default: 20% overlap.</div>
+    </div>
+
+    <!-- Semantic -->
+    <div class="chunk-panel" id="panel-semantic">
+      <div class="source-label">STRATEGY: Use embeddings to detect where the topic shifts — split there. Variable size, maximum semantic coherence.</div>
+      <div class="chunk-visual col">
+        <span class="cb cb1" style="display:block"><strong>[Topic: Loan Rates &amp; Terms]</strong> Embedding similarity stays HIGH across sentences about rates, amounts, and tenure → grouped into one chunk automatically.</span>
+        <span class="semantic-break">⚡ SEMANTIC BREAK DETECTED — cosine similarity drops below threshold (0.75)</span>
+        <span class="cb cb2" style="display:block"><strong>[Topic: Eligibility Criteria]</strong> Embedding similarity HIGH across sentences about age, citizenship, income → new chunk.</span>
+        <span class="semantic-break">⚡ SEMANTIC BREAK DETECTED</span>
+        <span class="cb cb3" style="display:block"><strong>[Topic: Application Process]</strong> Processing time, credit check, approval conditions → new chunk.</span>
+      </div>
+      <div class="pros-cons">
+        <div class="pros"><div class="pros-label">✓ PROS</div><ul><li>Highest semantic coherence of any strategy</li><li>Variable size adapts to content</li><li>Retrieval precision dramatically improves</li></ul></div>
+        <div class="cons"><div class="cons-label">✗ CONS</div><ul><li>Computationally expensive to build</li><li>Requires tuning the similarity threshold</li><li>Not available in all RAG frameworks</li></ul></div>
+      </div>
+      <div class="when-box"><div class="when-label">WHEN TO USE</div>High-stakes retrieval (compliance, audit, customer-facing answers) where a missed retrieval has real consequences. Used by LlamaIndex and LangChain advanced RAG.</div>
+    </div>
+
+    <!-- Hierarchical -->
+    <div class="chunk-panel" id="panel-hierarchical">
+      <div class="source-label">STRATEGY: Embed documents at multiple levels simultaneously — full document, section, paragraph, sentence. Retrieve at the right granularity.</div>
+      <div class="chunk-visual col">
+        <span class="cb cb1" style="display:block"><strong>Level 1 — Document Summary:</strong> "DBS Personal Loan: rates, eligibility, repayment, and application process." (1 embedding per doc)</span>
+        <span class="cb cb2" style="display:block;margin-left:1.5rem"><strong>Level 2 — Section:</strong> "Loan Rates &amp; Terms" | "Eligibility" | "Application Process" (1 embedding per section)</span>
+        <span class="cb cb3" style="display:block;margin-left:3rem"><strong>Level 3 — Paragraph:</strong> Each paragraph embedded separately (standard chunks)</span>
+        <span class="cb cb4" style="display:block;margin-left:4.5rem"><strong>Level 4 — Sentence:</strong> Each sentence embedded for fine-grained fact retrieval</span>
+      </div>
+      <div class="pros-cons">
+        <div class="pros"><div class="pros-label">✓ PROS</div><ul><li>Right granularity for different queries</li><li>Broad questions hit doc-level; specific ones hit sentence-level</li><li>Best retrieval quality overall</li></ul></div>
+        <div class="cons"><div class="cons-label">✗ CONS</div><ul><li>4–5× more embeddings to store</li><li>Complex routing logic needed</li><li>Higher infrastructure cost</li></ul></div>
+      </div>
+      <div class="when-box"><div class="when-label">WHEN TO USE</div>Enterprise knowledge bases with diverse query types — "what is your loan policy?" (doc-level) vs. "what is the early repayment fee?" (sentence-level) need different granularity.</div>
+    </div>
+
+  </div><!-- /left-panel -->
+
+  <!-- RIGHT: live scores -->
+  <div class="right-panel">
+    <div class="score-card">
+      <div class="score-card-title">STRATEGY SCORECARD</div>
+      <div id="scorecard"></div>
+    </div>
+    <div class="info-box" style="margin-top:0.75rem">
+      <b style="color:var(--page-accent)">Key insight</b><br>
+      Wrong chunking is the #1 cause of RAG failure in production. A perfect LLM with bad chunks returns bad answers. The embedding model can only retrieve what's in the chunk — if the relevant sentence was split across two chunks, neither chunk will score high enough to be retrieved.
+    </div>
+  </div>
+
+</div><!-- /top-grid -->
+
+<!-- BOTTOM: comparison table -->
+<div class="bottom-table-wrap">
+  <div style="font-family:var(--font-mono);font-size:0.65rem;color:var(--color-text-muted);letter-spacing:2px;margin-bottom:0.75rem">STRATEGY COMPARISON</div>
+  <table class="comp-table">
+    <tr><th>Strategy</th><th>Chunk Size</th><th>Coherence</th><th>Complexity</th><th>Best For</th></tr>
+    <tr><td>① Fixed Size</td><td>Fixed</td><td>Low</td><td>⭐</td><td>Prototypes, unstructured logs</td></tr>
+    <tr><td>② Sentence</td><td>Small</td><td>High</td><td>⭐⭐</td><td>FAQ, compliance rules</td></tr>
+    <tr><td>③ Paragraph</td><td>Medium</td><td>High</td><td>⭐⭐</td><td>Policy docs, product manuals</td></tr>
+    <tr><td>④ Sliding Window</td><td>Fixed + overlap</td><td>Medium–High</td><td>⭐⭐</td><td>Reports, legal docs, narratives</td></tr>
+    <tr><td>⑤ Semantic</td><td>Variable</td><td>Very High</td><td>⭐⭐⭐⭐</td><td>High-stakes retrieval, mixed docs</td></tr>
+    <tr><td>⑥ Hierarchical</td><td>Multi-level</td><td>Very High</td><td>⭐⭐⭐⭐⭐</td><td>Enterprise knowledge bases</td></tr>
+  </table>
+</div>
+
+<script>
+const SCORES = {
+  fixed:       { coherence:20, retrieval:25, complexity:95, storage:90 },
+  sentence:    { coherence:75, retrieval:65, complexity:70, storage:85 },
+  paragraph:   { coherence:80, retrieval:78, complexity:65, storage:80 },
+  overlap:     { coherence:72, retrieval:80, complexity:60, storage:55 },
+  semantic:    { coherence:95, retrieval:92, complexity:25, storage:65 },
+  hierarchical:{ coherence:95, retrieval:95, complexity:10, storage:20 },
+};
+
+const DIMS = [
+  { key:'coherence',  label:'Semantic coherence', pos:true  },
+  { key:'retrieval',  label:'Retrieval quality',  pos:true  },
+  { key:'complexity', label:'Implementation ease', pos:true  },
+  { key:'storage',    label:'Storage efficiency',  pos:true  },
+];
+
+function renderScorecard(strategy) {
+  const s = SCORES[strategy];
+  document.getElementById('scorecard').innerHTML = DIMS.map(d => `
+    <div class="score-row">
+      <div class="score-dim">${d.label}</div>
+      <div class="score-bar-bg"><div class="score-bar-fill" style="width:${s[d.key]}%"></div></div>
+      <div class="score-val">${s[d.key]}%</div>
+    </div>
+  `).join('');
+}
+
+function showChunk(id, el) {
+  document.querySelectorAll('.stab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.chunk-panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-' + id).classList.add('active');
+  renderScorecard(id);
+}
+
+renderScorecard('fixed');
+</script>
+</body>
+</html>

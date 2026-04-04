@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tokenizer Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<style>
+:root { --page-accent: #4f46e5; }
+body { display:flex; flex-direction:column; }
+nav { height:52px; padding:0 2rem; }
+
+/* ── Page wrapper (everything below nav) ─────────────────────────────── */
+.page-wrapper {
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+}
+
+/* ── Top section: left + right panels ───────────────────────────────── */
+.top-section {
+  flex:1;
+  display:grid;
+  grid-template-columns:1fr 280px;
+  min-height:0;
+  height:calc(100vh - 52px - 200px); /* leave room for bottom panel */
+}
+
+/* ── Left panel ──────────────────────────────────────────────────────── */
+.left-panel {
+  background:var(--color-surface);
+  padding:1.5rem;
+  display:flex;
+  flex-direction:column;
+  gap:1rem;
+  overflow-y:auto;
+  border-right:1px solid var(--color-border);
+}
+
+.input-area {
+  background:var(--color-surface);
+  border:2px solid var(--color-border);
+  border-radius:12px;
+  padding:1.25rem 1.5rem;
+  transition:border-color 0.2s;
+  box-shadow:var(--shadow-xs);
+  flex-shrink:0;
+}
+.input-area:focus-within { border-color:var(--page-accent); }
+.input-label {
+  font-family:var(--font-mono); font-size:0.7rem;
+  color:var(--color-text-secondary); letter-spacing:2px; text-transform:uppercase; margin-bottom:0.75rem;
+}
+textarea {
+  width:100%; background:transparent; border:none; outline:none;
+  font-family:var(--font-mono); font-size:1rem; color:var(--color-text-primary);
+  resize:none; line-height:1.6; min-height:90px;
+}
+
+.token-display {
+  background:var(--color-surface);
+  border:1px solid var(--color-border);
+  border-radius:12px;
+  padding:1.25rem 1.5rem;
+  flex:1;
+  min-height:80px;
+  box-shadow:var(--shadow-xs);
+  overflow-y:auto;
+}
+.token-display-label {
+  font-family:var(--font-mono); font-size:0.7rem;
+  color:var(--color-text-secondary); letter-spacing:2px; margin-bottom:1rem;
+}
+.tokens-wrap { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+
+/* ── Token chips ─────────────────────────────────────────────────────── */
+.token {
+  display:inline-flex; align-items:center; padding:4px 10px 4px 6px;
+  border-radius:6px; font-family:var(--font-mono); font-size:0.85rem;
+  cursor:default; transition:transform 0.15s; position:relative;
+  border:1px solid transparent;
+}
+.token:hover { transform:scale(1.08) translateY(-2px); z-index:10; }
+.token-id {
+  font-size:0.55rem; opacity:0.6; margin-right:5px; padding:1px 4px;
+  border-radius:3px; background:rgba(0,0,0,0.08);
+}
+.tc0 { background:var(--color-indigo-light); border-color:var(--color-violet-deep); color:var(--color-violet-dark); }
+.tc1 { background:var(--color-blue-light); border-color:var(--color-blue); color:var(--color-blue-dark); }
+.tc2 { background:var(--color-green-light); border-color:var(--color-green); color:var(--color-green-dark); }
+.tc3 { background:var(--color-yellow-light); border-color:var(--color-amber); color:var(--color-amber-deeper); }
+.tc4 { background:var(--color-red-light); border-color:var(--color-red-dark); color:var(--color-red-dark); }
+
+/* ── Right panel ─────────────────────────────────────────────────────── */
+.right-panel {
+  background:var(--color-surface-alt);
+  border-left:1px solid var(--color-border);
+  padding:1.5rem;
+  display:flex;
+  flex-direction:column;
+  gap:1.25rem;
+  overflow-y:auto;
+}
+
+/* Stats: 2x2 grid */
+.stats-grid {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:0.75rem;
+}
+.stat {
+  background:var(--color-surface);
+  border:1px solid var(--color-border);
+  border-radius:10px;
+  padding:0.85rem 0.75rem;
+  text-align:center;
+  box-shadow:var(--shadow-xs);
+}
+.stat-num { font-size:1.75rem; font-weight:700; color:var(--page-accent); line-height:1; }
+.stat-label {
+  font-family:var(--font-mono); font-size:0.6rem;
+  color:var(--color-text-secondary); margin-top:0.25rem; letter-spacing:1px;
+}
+
+/* Preset buttons in right panel */
+.presets-label {
+  font-family:var(--font-mono); font-size:0.65rem;
+  color:var(--color-text-muted); letter-spacing:2px; text-transform:uppercase;
+  margin-bottom:0.4rem;
+}
+.presets { display:flex; gap:0.5rem; flex-direction:column; }
+.preset-btn {
+  background:var(--color-surface); border:1px solid var(--color-border);
+  border-radius:8px; padding:6px 12px;
+  font-family:var(--font-mono); font-size:0.72rem;
+  color:var(--page-accent); cursor:pointer; transition:all 0.2s;
+  text-align:left; width:100%;
+}
+.preset-btn:hover { border-color:var(--page-accent); background:var(--color-indigo-light); }
+
+/* Hint note in right panel */
+.hint-note {
+  font-family:var(--font-mono); font-size:0.7rem;
+  color:var(--color-text-muted); line-height:1.6; padding-top:0.25rem;
+  border-top:1px solid var(--color-border);
+}
+
+/* ── Bottom panel ────────────────────────────────────────────────────── */
+.bottom-panel {
+  flex-shrink:0;
+  padding:1.5rem 2rem;
+  background:var(--color-surface);
+  border-top:1px solid var(--color-border);
+  display:flex;
+  flex-direction:column;
+  gap:1rem;
+}
+
+.insight-box {
+  background:var(--color-indigo-light); border:1px solid var(--color-indigo-100);
+  border-radius:10px; padding:1rem 1.25rem;
+  font-family:var(--font-mono); font-size:0.82rem; color:var(--color-indigo-dark); line-height:1.6;
+}
+.insight-box strong { color:var(--color-indigo-deeper); }
+
+.split-highlight {
+  background:var(--color-yellow-light); border:1px solid var(--color-amber);
+  border-radius:10px; padding:0.9rem 1.25rem;
+  font-family:var(--font-mono); font-size:0.8rem; color:var(--color-amber-deeper); line-height:1.8;
+}
+.split-highlight span { color:var(--color-orange); }
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html">← Demos</a>
+  <span class="nav-sep">/</span>
+  <span class="cur">Tokenizer</span>
+</nav>
+
+<div class="page-wrapper">
+
+  <!-- TOP SECTION: left + right -->
+  <div class="top-section">
+
+    <!-- LEFT PANEL: input + token output -->
+    <div class="left-panel">
+      <div class="input-area">
+        <div class="input-label">Input Text</div>
+        <textarea id="input" placeholder="Type anything..." oninput="tokenize()">The customer's loan application was flagged for AML review.</textarea>
+      </div>
+
+      <div class="token-display">
+        <div class="token-display-label">Tokens (hover for ID)</div>
+        <div class="tokens-wrap" id="token-output"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL: stats + presets + hint -->
+    <div class="right-panel">
+
+      <!-- Stats 2x2 grid -->
+      <div>
+        <div class="presets-label" style="margin-bottom:0.6rem;">Stats</div>
+        <div class="stats-grid">
+          <div class="stat">
+            <div class="stat-num" id="char-count">0</div>
+            <div class="stat-label">characters</div>
+          </div>
+          <div class="stat">
+            <div class="stat-num" id="word-count">0</div>
+            <div class="stat-label">words</div>
+          </div>
+          <div class="stat">
+            <div class="stat-num" id="token-count" style="color:#0891b2">0</div>
+            <div class="stat-label">tokens</div>
+          </div>
+          <div class="stat">
+            <div class="stat-num" id="ratio" style="color:#d97706">0.0</div>
+            <div class="stat-label">tokens/word</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preset buttons -->
+      <div>
+        <div class="presets-label">Try a preset</div>
+        <div class="presets">
+          <button class="preset-btn" onclick="setPreset('The customer\'s loan application was flagged for AML review.')">Loan + AML</button>
+          <button class="preset-btn" onclick="setPreset('Transfer $5,000 to IBAN GB29NWBK60161331926819 by 31-Dec-2024.')">IBAN Transfer</button>
+          <button class="preset-btn" onclick="setPreset('KYC SWIFT mortgage creditworthiness')">Banking Terms</button>
+          <button class="preset-btn" onclick="setPreset('king - man + woman ≈ queen')">Word2Vec</button>
+          <button class="preset-btn" onclick="setPreset('Hello world')">Hello world</button>
+        </div>
+      </div>
+
+      <!-- Hint -->
+      <div class="hint-note">
+        Each color chip = one token.<br>
+        Hover a chip to see its token ID.<br>
+        Token count drives API cost &amp; context window usage.<br><br>
+        <span style="color:#9ca3af">Note: this is a simulated tokenizer using hand-crafted subword rules to illustrate BPE patterns. Real tokenizers (GPT-4, Claude, Llama) use trained vocabularies of 30k–100k tokens and may split differently.</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- BOTTOM PANEL: insights -->
+  <div class="bottom-panel">
+    <div id="insights"></div>
+  </div>
+
+</div><!-- /.page-wrapper -->
+
+<script>
+// Simplified tokenizer that mimics subword tokenization patterns
+function tokenize() {
+  const text = document.getElementById('input').value;
+  const tokens = simulateTokenize(text);
+
+  document.getElementById('char-count').textContent = text.length;
+  document.getElementById('word-count').textContent = text.trim() ? text.trim().split(/\s+/).length : 0;
+  document.getElementById('token-count').textContent = tokens.length;
+
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const ratio = words > 0 ? (tokens.length / words).toFixed(1) : '0.0';
+  document.getElementById('ratio').textContent = ratio;
+
+  renderTokens(tokens);
+  renderInsights(text, tokens);
+}
+
+function simulateTokenize(text) {
+  if (!text.trim()) return [];
+
+  const rules = [
+    // IBANs - fragment heavily
+    { re: /GB\d{2}[A-Z0-9]+/, fn: s => splitToChunks(s, [2,2,4,4,4,4,4]) },
+    // Numbers with separators
+    { re: /\$[\d,]+/, fn: s => ['$', ...s.slice(1).split(',')] },
+    { re: /\d{1,2}-[A-Za-z]+-\d{4}/, fn: s => s.match(/(\d+|[A-Za-z]+|-)/g) },
+    // Banking acronyms
+    { re: /\bIBAN\b/, fn: () => ['IB','AN'] },
+    { re: /\bSWIFT\b/, fn: () => ['SW','IFT'] },
+    { re: /\bAML\b/, fn: () => ['AM','L'] },
+    { re: /\bKYC\b/, fn: () => ['KY','C'] },
+    { re: /\bBERT\b/, fn: () => ['BER','T'] },
+    { re: /\bRLHF\b/, fn: () => ['RL','HF'] },
+  ];
+
+  // Word-level tokenize with subword splitting
+  const wordTokens = [];
+  const words = tokenizeRaw(text);
+  let id = 1000;
+  words.forEach(w => {
+    const sub = subwordSplit(w);
+    sub.forEach((s, i) => {
+      wordTokens.push({ text: s, id: id++, isFirst: i === 0 });
+    });
+  });
+  return wordTokens;
+}
+
+function tokenizeRaw(text) {
+  // Split preserving spaces, punctuation
+  const raw = [];
+  const re = /(\s+|[^\s\w]|\w+)/g;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    raw.push(m[0]);
+  }
+  return raw;
+}
+
+function subwordSplit(word) {
+  if (!word.trim()) return [word];
+
+  const banking = {
+    'creditworthiness': ['credit','worth','iness'],
+    'mortgage': ['mort','gage'],
+    'transfer': ['trans','fer'],
+    'application': ['app','li','ca','tion'],
+    'flagged': ['flag','ged'],
+    "customer's": ['customer',"'s"],
+    'customer': ['customer'],
+    'financial': ['fin','anci','al'],
+    'compliance': ['comp','li','ance'],
+    'regulatory': ['reg','ulat','ory'],
+    'unbelievable': ['un','believ','able'],
+    'sanctioned': ['sanc','tion','ed'],
+    'liquidation': ['liquid','ation'],
+    'repayment': ['re','pay','ment'],
+    'outstanding': ['out','stand','ing'],
+    'collateral': ['coll','ateral'],
+    'approved': ['appro','ved'],
+    'reviewing': ['review','ing'],
+  };
+
+  const lower = word.toLowerCase();
+  if (banking[lower]) return banking[lower].map((s,i) => i===0 ? preserveCase(s, word) : s);
+
+  // Common suffixes that split
+  const suffixes = ['tion','ing','ment','ness','ful','less','able','ible','al','ive','ous'];
+  for (const suf of suffixes) {
+    if (lower.endsWith(suf) && lower.length > suf.length + 2) {
+      const root = word.slice(0, word.length - suf.length);
+      return [root, suf];
+    }
+  }
+
+  // Long words split at ~4 char boundaries
+  if (word.length > 8 && /^\w+$/.test(word)) {
+    const mid = Math.floor(word.length / 2);
+    return [word.slice(0, mid), word.slice(mid)];
+  }
+
+  return [word];
+}
+
+function preserveCase(sub, orig) {
+  if (orig[0] === orig[0].toUpperCase()) return sub[0].toUpperCase() + sub.slice(1);
+  return sub;
+}
+
+const COLORS = ['tc0','tc1','tc2','tc3','tc4'];
+
+function renderTokens(tokens) {
+  const out = document.getElementById('token-output');
+  out.innerHTML = '';
+  tokens.forEach((tok, i) => {
+    if (tok.text === ' ' || tok.text === '\n') {
+      out.appendChild(document.createTextNode(' '));
+      return;
+    }
+    const el = document.createElement('span');
+    el.className = `token ${COLORS[i % COLORS.length]}`;
+    el.title = `Token ID: ${tok.id}`;
+    el.innerHTML = `<span class="token-id">${tok.id}</span>${escHtml(tok.text)}`;
+    el.style.animationDelay = `${i * 0.03}s`;
+    el.style.animation = 'popIn 0.2s ease both';
+    out.appendChild(el);
+  });
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderInsights(text, tokens) {
+  const el = document.getElementById('insights');
+  if (!text.trim()) { el.innerHTML = ''; return; }
+
+  const splits = [];
+  if (text.includes('AML')) splits.push('"AML" → <span>AM</span> + <span>L</span> (not recognized as one concept)');
+  if (text.toLowerCase().includes('iban')) splits.push('"IBAN" → <span>IB</span> + <span>AN</span>');
+  if (text.toLowerCase().includes('swift')) splits.push('"SWIFT" → <span>SW</span> + <span>IFT</span>');
+  if (text.toLowerCase().includes('kyc')) splits.push('"KYC" → <span>KY</span> + <span>C</span>');
+  if (text.toLowerCase().includes('application')) splits.push('"application" → <span>app</span> + <span>li</span> + <span>ca</span> + <span>tion</span>');
+  if (text.toLowerCase().includes('flagged')) splits.push('"flagged" → <span>flag</span> + <span>ged</span>');
+  if (text.toLowerCase().includes("customer's")) splits.push('"customer\'s" → <span>customer</span> + <span>\'s</span>');
+  if (text.toLowerCase().includes('mortgage')) splits.push('"mortgage" → <span>mort</span> + <span>gage</span>');
+
+  const insightHtml = `
+    <div class="insight-box">
+      <strong>Key insight:</strong> Domain acronyms and financial codes fragment into meaningless substrings.
+      The model has <em>weaker semantic grounding</em> on these as unified concepts.<br>
+      Token count: <strong style="color:#4f46e5">${tokens.filter(t=>t.text.trim()).length} tokens</strong> — each costs API credits and context window space.
+    </div>
+    ${splits.length ? `<div class="split-highlight">Notable splits:<br>${splits.join('<br>')}</div>` : ''}
+  `;
+  el.innerHTML = insightHtml;
+}
+
+function setPreset(text) {
+  document.getElementById('input').value = text;
+  tokenize();
+}
+
+// Add pop animation
+const style = document.createElement('style');
+style.textContent = '@keyframes popIn { from { opacity:0; transform:scale(0.7) translateY(4px); } to { opacity:1; transform:scale(1) translateY(0); } }';
+document.head.appendChild(style);
+
+tokenize();
+</script>
+</body>
+</html>

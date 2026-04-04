@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Temperature Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<style>
+:root { --page-accent: #0891b2; }
+body { display:flex; flex-direction:column; }
+
+/* TOP TWO-PANEL GRID */
+.top-grid {
+  display:grid;
+  grid-template-columns:3fr 2fr;
+  min-height:400px;
+  flex-shrink:0;
+}
+
+/* LEFT PANEL — override padding/gap from theme */
+.panel-left { padding:1.5rem 2rem; gap:1.5rem; }
+
+/* TEMP DISPLAY */
+.temp-display { display:flex; align-items:baseline; gap:0.5rem; }
+.temp-value { font-size:4rem; font-weight:700; color:var(--page-accent); font-family:var(--font-mono); line-height:1; transition:color var(--transition-slow); }
+.temp-label { font-family:var(--font-mono); font-size:0.8rem; color:var(--color-text-secondary); }
+.temp-name { font-size:1.2rem; font-weight:600; margin-left:0.5rem; transition:color var(--transition-slow); }
+
+/* CHART */
+.chart-wrap { display:flex; align-items:flex-end; gap:4px; height:120px; padding:0 0.25rem; }
+.bar-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; }
+.bar { width:100%; border-radius:4px 4px 0 0; transition:height var(--transition-chart), background var(--transition-chart); min-height:2px; }
+.bar-word { font-family:var(--font-mono); font-size:0.55rem; color:var(--color-text-muted); text-align:center; transform:rotate(-30deg); white-space:nowrap; margin-top:4px; }
+.tick-row { display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:0.65rem; color:var(--color-text-muted); margin-top:0.25rem; }
+
+/* RIGHT PANEL — override gap */
+.panel-right { gap:1rem; }
+.output-label { display:flex; align-items:center; gap:0.75rem; }
+.output-text { font-size:1rem; line-height:1.7; color:var(--color-text-primary); min-height:60px; flex:1; }
+.output-text .chosen { color:var(--page-accent); font-weight:600; border-bottom:2px solid var(--page-accent); transition:color var(--transition-slow); }
+
+/* BOTTOM PANEL — override bottom-label margin */
+.bottom-label { margin-bottom:1rem; }
+
+/* USE CASE GRID — 5 cards in one row */
+.usecase-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:1rem; }
+.uc { background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-lg); padding:var(--space-4); box-shadow:var(--shadow-xs); }
+.uc-temp { font-family:var(--font-mono); font-size:1.25rem; font-weight:700; margin-bottom:0.25rem; }
+.uc-name { font-size:0.8rem; font-weight:600; margin-bottom:0.5rem; }
+.uc-examples { font-family:var(--font-mono); font-size:0.68rem; color:var(--color-text-secondary); line-height:1.5; }
+
+.highlight-current { border-color: currentColor !important; background: rgba(0,0,0,0.02) !important; }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html">← Demos</a>
+  <span class="nav-sep">/</span>
+  <span class="cur">Temperature</span>
+</nav>
+
+<div class="page-header">
+  <h1>Temperature <span>Slider</span></h1>
+  <div class="subtitle">// Drag the slider to see how temperature reshapes the probability distribution over next tokens.</div>
+</div>
+
+<div class="top-grid">
+  <!-- LEFT: Interactive demo -->
+  <div class="panel-left">
+    <div class="temp-display">
+      <div class="temp-value" id="tv">0.1</div>
+      <div>
+        <div class="temp-label">temperature</div>
+        <div class="temp-name" id="tn">Deterministic</div>
+      </div>
+    </div>
+
+    <div>
+      <input type="range" id="tempSlider" min="0" max="100" value="10" oninput="update()">
+      <div class="tick-row">
+        <span>0.0</span><span>0.2</span><span>0.4</span><span>0.6</span><span>0.8</span><span>1.0</span>
+      </div>
+    </div>
+
+    <div>
+      <div class="chart-label">NEXT TOKEN PROBABILITY DISTRIBUTION — "The capital of France is ___"</div>
+      <div class="chart-wrap" id="chart"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Sample output + resample -->
+  <div class="panel-right">
+    <div class="output-label">
+      <span>SAMPLE OUTPUT</span>
+      <button onclick="resample()" style="background:#f3f4f6;border:1px solid #e5e7eb;border-radius:6px;padding:3px 10px;color:#4f46e5;font-family:'Fira Code',monospace;font-size:0.7rem;cursor:pointer">↻ resample</button>
+    </div>
+    <div class="output-text" id="output"></div>
+  </div>
+</div>
+
+<!-- BOTTOM: Use-case cards -->
+<div class="panel-bottom">
+  <div class="bottom-label">TEMPERATURE → USE CASE</div>
+  <div class="usecase-grid" id="uc-grid"></div>
+</div>
+
+<!-- BOTTOM: References -->
+<div class="panel-bottom" style="border-top:1px solid var(--color-border);">
+
+  <div style="font-size:1.1rem;font-weight:700;color:var(--color-text-primary);margin-bottom:0.3rem;letter-spacing:-0.01em;">Further Reading</div>
+  <div style="font-family:var(--font-mono);font-size:0.75rem;color:var(--color-text-muted);margin-bottom:1.25rem;">// go deeper on how temperature and sampling actually work</div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;">
+
+    <a href="https://huggingface.co/blog/how-to-generate" target="_blank" rel="noopener" style="text-decoration:none;">
+      <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:12px;padding:1.25rem;display:flex;flex-direction:column;gap:0.6rem;box-shadow:var(--shadow-xs);transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(8,145,178,0.15)'" onmouseout="this.style.boxShadow='var(--shadow-xs)'">
+        <div style="font-family:var(--font-mono);font-size:0.6rem;letter-spacing:2px;color:var(--page-accent);">BEST EXPLAINER</div>
+        <div style="font-size:0.85rem;font-weight:700;color:var(--color-text-primary);">How to Generate Text — HuggingFace</div>
+        <div style="font-size:0.78rem;color:var(--color-text-secondary);line-height:1.6;">Covers temperature, top-k, top-p (nucleus) and beam search with real examples. The clearest written explainer available.</div>
+        <div style="font-family:var(--font-mono);font-size:0.72rem;background:var(--color-cyan-light);color:var(--color-cyan);padding:4px 8px;border-radius:6px;margin-top:auto;">huggingface.co/blog</div>
+      </div>
+    </a>
+
+    <a href="https://lukesalamone.github.io/posts/what-is-temperature" target="_blank" rel="noopener" style="text-decoration:none;">
+      <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:12px;padding:1.25rem;display:flex;flex-direction:column;gap:0.6rem;box-shadow:var(--shadow-xs);transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(8,145,178,0.15)'" onmouseout="this.style.boxShadow='var(--shadow-xs)'">
+        <div style="font-family:var(--font-mono);font-size:0.6rem;letter-spacing:2px;color:var(--page-accent);">VISUAL</div>
+        <div style="font-size:0.85rem;font-weight:700;color:var(--color-text-primary);">What is Temperature? — Luke Salamone</div>
+        <div style="font-size:0.78rem;color:var(--color-text-secondary);line-height:1.6;">Interactive visual showing exactly how the softmax distribution shifts as temperature changes — similar to this demo but with the maths exposed.</div>
+        <div style="font-family:var(--font-mono);font-size:0.72rem;background:var(--color-cyan-light);color:var(--color-cyan);padding:4px 8px;border-radius:6px;margin-top:auto;">lukesalamone.github.io</div>
+      </div>
+    </a>
+
+    <a href="https://platform.openai.com/docs/api-reference/chat/create#chat-create-temperature" target="_blank" rel="noopener" style="text-decoration:none;">
+      <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:12px;padding:1.25rem;display:flex;flex-direction:column;gap:0.6rem;box-shadow:var(--shadow-xs);transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(8,145,178,0.15)'" onmouseout="this.style.boxShadow='var(--shadow-xs)'">
+        <div style="font-family:var(--font-mono);font-size:0.6rem;letter-spacing:2px;color:var(--page-accent);">PRACTITIONER</div>
+        <div style="font-size:0.85rem;font-weight:700;color:var(--color-text-primary);">OpenAI API — Temperature Param</div>
+        <div style="font-size:0.78rem;color:var(--color-text-secondary);line-height:1.6;">The official parameter reference — how temperature (and top_p) are actually passed when calling real models in production. Where the concept becomes code.</div>
+        <div style="font-family:var(--font-mono);font-size:0.72rem;background:var(--color-cyan-light);color:var(--color-cyan);padding:4px 8px;border-radius:6px;margin-top:auto;">platform.openai.com/docs</div>
+      </div>
+    </a>
+
+  </div>
+
+  <div style="margin-top:1.25rem;padding:0.85rem 1rem;background:var(--color-surface-alt);border:1px solid var(--color-border);border-radius:8px;font-family:var(--font-mono);font-size:0.72rem;color:var(--color-text-secondary);line-height:1.6;">
+    <b style="color:var(--color-text-primary)">Note:</b> The probability distributions in this demo are illustrative — computed from hand-crafted base probabilities, not a real model. Real models also combine temperature with <em>top-k</em> and <em>top-p</em> (nucleus) sampling to further control output quality.
+  </div>
+
+</div>
+
+<script>
+const TOKENS = [
+  { word:'Paris',      baseProb:0.82 },
+  { word:'Lyon',       baseProb:0.07 },
+  { word:'a city',     baseProb:0.05 },
+  { word:'the',        baseProb:0.03 },
+  { word:'located',    baseProb:0.02 },
+  { word:'luminous',   baseProb:0.01 },
+];
+
+const OUTPUTS = {
+  low: [
+    '"The capital of France is <span class="chosen">Paris</span>."',
+    '"The capital of France is <span class="chosen">Paris</span>."',
+    '"The capital of France is <span class="chosen">Paris</span>."',
+  ],
+  mid: [
+    '"The capital of France is <span class="chosen">Paris</span>, a city on the Seine."',
+    '"The capital of France is <span class="chosen">Paris</span>, known for the Eiffel Tower."',
+    '"France\'s capital is <span class="chosen">Paris</span>, a center of art and culture."',
+  ],
+  high: [
+    '"<span class="chosen">Paris</span> — a luminous city built on centuries of contradiction."',
+    '"The capital is <span class="chosen">Paris</span>, but truly it is a feeling, not a place."',
+    '"France offers <span class="chosen">Paris</span>: a city that rewrites itself every decade."',
+  ]
+};
+
+const USECASES = [
+  { temp:'0.0', name:'Data Extraction', col:'#0891b2', examples:'Transaction classification\nFraud rule generation\nRegulatory parsing' },
+  { temp:'0.2', name:'Code Generation', col:'#0ea5e9', examples:'Code review\nBug fixing\nCompliance code' },
+  { temp:'0.5', name:'Summarisation', col:'#f59e0b', examples:'Document summaries\nRegulatory responses\nReport drafting' },
+  { temp:'0.8', name:'User Stories', col:'#f97316', examples:'Product features\nTest scenarios\nBrainstorming' },
+  { temp:'1.0', name:'Creative Writing', col:'#ef4444', examples:'Product naming\nMarketing copy\nIdeation' },
+];
+
+let currentTemp = 0.1;
+
+function softmax(logits, temp) {
+  if (temp <= 0.01) {
+    const max = Math.max(...logits);
+    return logits.map(l => l === max ? 1 : 0);
+  }
+  const scaled = logits.map(l => l / temp);
+  const maxS = Math.max(...scaled);
+  const exps = scaled.map(s => Math.exp(s - maxS));
+  const sum = exps.reduce((a,b) => a+b, 0);
+  return exps.map(e => e/sum);
+}
+
+function update() {
+  const raw = parseInt(document.getElementById('tempSlider').value);
+  currentTemp = raw / 100;
+
+  const tv = document.getElementById('tv');
+  const tn = document.getElementById('tn');
+  tv.textContent = currentTemp.toFixed(1);
+
+  let name, col;
+  if (currentTemp <= 0.1) { name='Deterministic'; col='#0891b2'; }
+  else if (currentTemp <= 0.3) { name='Precise'; col='#0ea5e9'; }
+  else if (currentTemp <= 0.6) { name='Balanced'; col='#f59e0b'; }
+  else if (currentTemp <= 0.8) { name='Creative'; col='#f97316'; }
+  else { name='Wild'; col='#ef4444'; }
+
+  tv.style.color = col;
+  tn.textContent = name;
+  tn.style.color = col;
+
+  document.querySelector('input[type=range]').style.setProperty('--c', col);
+
+  renderChart();
+  renderOutput();
+  renderUseCases();
+}
+
+function renderChart() {
+  const logits = TOKENS.map(t => Math.log(t.baseProb + 0.001));
+  const probs = softmax(logits, Math.max(currentTemp, 0.01));
+  const chart = document.getElementById('chart');
+  chart.innerHTML = '';
+
+  const maxP = Math.max(...probs);
+  probs.forEach((p, i) => {
+    const col = document.createElement('div');
+    col.className = 'bar-col';
+    const heightPct = Math.max(2, (p / maxP) * 100);
+    const alpha = 0.4 + p * 0.6;
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    bar.style.height = heightPct + '%';
+    bar.style.background = i === 0 ? '#0891b2' : `rgba(99,102,241,${alpha})`;
+
+    const label = document.createElement('div');
+    label.className = 'bar-word';
+    label.textContent = TOKENS[i].word;
+
+    const prob = document.createElement('div');
+    prob.style.cssText = `font-family:'Fira Code',monospace;font-size:0.6rem;color:#9ca3af;margin-bottom:2px`;
+    prob.textContent = (p*100).toFixed(1)+'%';
+
+    col.appendChild(prob);
+    col.appendChild(bar);
+    col.appendChild(label);
+    chart.appendChild(col);
+  });
+}
+
+function resample() { renderOutput(); }
+
+function renderOutput() {
+  let arr;
+  if (currentTemp < 0.3) arr = OUTPUTS.low;
+  else if (currentTemp < 0.7) arr = OUTPUTS.mid;
+  else arr = OUTPUTS.high;
+  const pick = arr[Math.floor(Math.random()*arr.length)];
+  document.getElementById('output').innerHTML = pick;
+}
+
+function renderUseCases() {
+  const grid = document.getElementById('uc-grid');
+  grid.innerHTML = USECASES.map(uc => {
+    const val = parseFloat(uc.temp);
+    const active = Math.abs(val - currentTemp) <= 0.15;
+    return `<div class="uc ${active ? 'highlight-current' : ''}" style="color:${uc.col}; ${active ? `border-color:${uc.col}` : ''}">
+      <div class="uc-temp">${uc.temp}</div>
+      <div class="uc-name">${uc.name}</div>
+      <div class="uc-examples">${uc.examples.replace(/\n/g,'<br>')}</div>
+    </div>`;
+  }).join('');
+}
+
+update();
+</script>
+</body>
+</html>

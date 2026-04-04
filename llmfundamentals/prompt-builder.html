@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prompt Builder</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<style>
+:root { --page-accent: #db2777; }
+
+/* Main workspace wrapper */
+.workspace { max-width:1200px; margin:0 auto; }
+
+/* TOP: 2-column grid */
+.top-grid {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  min-height:500px;
+}
+
+/* LEFT: builder */
+.builder {
+  background:var(--color-surface);
+  padding:1.5rem;
+  border-right:1px solid var(--color-border);
+  display:flex;
+  flex-direction:column;
+  gap:0.75rem;
+}
+.builder h3 { font-family:var(--font-mono); font-size:0.7rem; color:var(--color-text-muted); letter-spacing:2px; margin-bottom:0.25rem; }
+
+.toggle-block {
+  border-radius:10px; overflow:hidden; border:1px solid var(--color-border);
+  transition:all 0.3s;
+}
+.toggle-block.on { border-color:currentColor; }
+.tb-header {
+  display:flex; align-items:center; gap:0.75rem; padding:0.9rem 1rem;
+  cursor:pointer; user-select:none; transition:background 0.2s;
+  background:var(--color-surface);
+}
+.tb-header:hover { background:var(--color-surface-alt); }
+.tb-toggle {
+  width:36px; height:20px; border-radius:100px; position:relative;
+  flex-shrink:0; transition:background 0.3s; background:var(--color-border-light);
+  border:1px solid var(--color-border-md);
+}
+.tb-toggle::after {
+  content:''; position:absolute; left:3px; top:50%; transform:translateY(-50%);
+  width:14px; height:14px; border-radius:50%; background:var(--color-text-muted);
+  transition:all 0.3s;
+}
+.toggle-block.on .tb-toggle { border-color:currentColor; }
+.toggle-block.on .tb-toggle::after { left:calc(100% - 17px); background:currentColor; }
+.tb-label { font-weight:600; font-size:0.9rem; }
+.tb-desc { font-family:var(--font-mono); font-size:0.68rem; color:var(--color-text-muted); margin-left:auto; }
+.tb-body {
+  padding:0 1rem 0.75rem;
+  font-family:var(--font-mono); font-size:0.78rem; color:var(--color-text-secondary); line-height:1.6;
+  background:var(--color-surface-alt); border-top:1px solid var(--color-border-light);
+  max-height:0; overflow:hidden; transition:max-height 0.3s, padding 0.3s;
+}
+.toggle-block.on .tb-body { max-height:200px; padding:0.75rem 1rem; }
+
+/* Quality meter */
+.quality-meter { margin-top:1rem; }
+.qm-label { font-family:var(--font-mono); font-size:0.65rem; color:var(--color-text-muted); letter-spacing:2px; margin-bottom:0.5rem; display:flex; justify-content:space-between; }
+.qm-bar { background:var(--color-border-light); border-radius:100px; height:12px; overflow:hidden; }
+.qm-fill { height:100%; border-radius:100px; transition:width 0.5s ease, background 0.5s ease; }
+
+/* RIGHT: preview */
+.preview {
+  background:var(--color-surface-alt);
+  padding:1.5rem;
+  display:flex;
+  flex-direction:column;
+  gap:1rem;
+}
+.preview h3 { font-family:var(--font-mono); font-size:0.7rem; color:var(--color-text-muted); letter-spacing:2px; }
+.prompt-box {
+  background:var(--color-surface); border:1px solid var(--color-border); border-radius:10px;
+  padding:1.25rem; font-family:var(--font-mono); font-size:0.78rem;
+  line-height:1.7; min-height:160px; color:var(--color-text-secondary);
+}
+.prompt-block { margin-bottom:0.75rem; }
+.prompt-block:last-child { margin-bottom:0; }
+.block-tag { font-size:0.62rem; letter-spacing:2px; margin-bottom:3px; }
+.output-box {
+  background:var(--color-surface); border:1px solid var(--color-border); border-radius:10px;
+  padding:1.25rem; font-size:0.85rem; line-height:1.7; min-height:120px;
+}
+.output-quality-label {
+  font-family:var(--font-mono); font-size:0.65rem; letter-spacing:2px; margin-bottom:0.75rem;
+  display:flex; align-items:center; gap:0.5rem;
+}
+.quality-dot { width:8px; height:8px; border-radius:50%; }
+
+/* BOTTOM: explanation section */
+.bottom-section {
+  background:var(--color-surface);
+  border-top:1px solid var(--color-border);
+  padding:1.5rem 2rem;
+}
+.bottom-section h3 {
+  font-family:var(--font-mono); font-size:0.7rem; color:var(--color-text-muted);
+  letter-spacing:2px; margin-bottom:1rem;
+}
+.cards-grid {
+  display:grid;
+  grid-template-columns:repeat(4, 1fr);
+  gap:1rem;
+}
+.card {
+  background:var(--color-surface);
+  border:1px solid var(--color-border);
+  border-radius:10px;
+  padding:1rem;
+}
+.card-header {
+  display:flex;
+  align-items:center;
+  gap:0.5rem;
+  margin-bottom:0.6rem;
+}
+.card-icon {
+  font-size:1.1rem;
+  line-height:1;
+}
+.card-title {
+  font-weight:600;
+  font-size:0.88rem;
+  color:var(--color-text-primary);
+}
+.card-body {
+  font-family:var(--font-mono);
+  font-size:0.75rem;
+  color:var(--color-text-secondary);
+  line-height:1.6;
+}
+.card-accent-role    { border-top:3px solid var(--color-purple); }
+.card-accent-context { border-top:3px solid var(--color-cyan-bright); }
+.card-accent-task    { border-top:3px solid var(--color-emerald); }
+.card-accent-format  { border-top:3px solid var(--page-accent); }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html">← Demos</a>
+  <span class="nav-sep">/</span>
+  <span class="cur">Prompt Builder</span>
+</nav>
+
+<!-- Full-width page header -->
+<div class="page-header">
+  <h1>Prompt <span>Builder</span></h1>
+  <div class="subtitle">// Toggle prompt components on/off. See how each element changes quality and the LLM output.</div>
+</div>
+
+<div class="workspace">
+
+  <!-- TOP: 2-column grid -->
+  <div class="top-grid">
+
+    <!-- LEFT: toggle blocks + quality meter -->
+    <div class="builder">
+      <h3>PROMPT COMPONENTS — TOGGLE ON/OFF</h3>
+
+      <div class="toggle-block on" id="tb-role" style="color:#c084fc" onclick="toggle('role')">
+        <div class="tb-header">
+          <div class="tb-toggle"></div>
+          <div class="tb-label">👤 Role</div>
+          <div class="tb-desc">activates expertise</div>
+        </div>
+        <div class="tb-body">
+          "You are a senior backend engineer specialising in Java microservices and distributed systems with 10 years of experience in high-throughput payment systems."
+        </div>
+      </div>
+
+      <div class="toggle-block on" id="tb-context" style="color:#60a5fa" onclick="toggle('context')">
+        <div class="tb-header">
+          <div class="tb-toggle"></div>
+          <div class="tb-label">🔍 Context</div>
+          <div class="tb-desc">narrows attention space</div>
+        </div>
+        <div class="tb-body">
+          "We have a payment processing service handling 10,000 TPS. Stack: Spring Boot 3, Kafka for async events, PostgreSQL. The service has been experiencing latency spikes at peak load."
+        </div>
+      </div>
+
+      <div class="toggle-block on" id="tb-task" style="color:#34d399" onclick="toggle('task')">
+        <div class="tb-header">
+          <div class="tb-toggle"></div>
+          <div class="tb-label">🎯 Task</div>
+          <div class="tb-desc">clear action verb</div>
+        </div>
+        <div class="tb-body">
+          "Review the following code and identify performance bottlenecks."
+        </div>
+      </div>
+
+      <div class="toggle-block on" id="tb-constraints" style="color:#fbbf24" onclick="toggle('constraints')">
+        <div class="tb-header">
+          <div class="tb-toggle"></div>
+          <div class="tb-label">🚧 Constraints</div>
+          <div class="tb-desc">prevents scope creep</div>
+        </div>
+        <div class="tb-body">
+          "- Focus only on database interaction patterns<br>- Do not suggest architectural changes<br>- Assume Java 21 and latest Spring Boot"
+        </div>
+      </div>
+
+      <div class="toggle-block on" id="tb-format" style="color:#f87171" onclick="toggle('format')">
+        <div class="tb-header">
+          <div class="tb-toggle"></div>
+          <div class="tb-label">📋 Output Format</div>
+          <div class="tb-desc">parseable &amp; consistent</div>
+        </div>
+        <div class="tb-body">
+          "Numbered list. Each finding: Issue description · Severity: High/Medium/Low · Recommended fix with code snippet."
+        </div>
+      </div>
+
+      <div class="quality-meter">
+        <div class="qm-label">
+          <span>PROMPT QUALITY SCORE</span>
+          <span id="qscore">100/100</span>
+        </div>
+        <div class="qm-bar"><div class="qm-fill" id="qfill" style="width:100%;background:#34d399"></div></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: assembled prompt + simulated output -->
+    <div class="preview">
+      <h3>ASSEMBLED PROMPT</h3>
+      <div class="prompt-box" id="prompt-preview"></div>
+
+      <h3>SIMULATED OUTPUT</h3>
+      <div class="output-box" id="output-preview"></div>
+    </div>
+
+  </div><!-- /top-grid -->
+
+  <!-- BOTTOM: 4-card explanation section -->
+  <div class="bottom-section">
+    <h3>WHY EACH COMPONENT MATTERS</h3>
+    <div class="cards-grid">
+
+      <div class="card card-accent-role">
+        <div class="card-header">
+          <span class="card-icon">👤</span>
+          <span class="card-title">Role</span>
+        </div>
+        <div class="card-body">
+          Sets expertise level. Without it the model answers as a generic assistant — no domain knowledge assumed, no specialised vocabulary, no seniority of judgment.
+        </div>
+      </div>
+
+      <div class="card card-accent-context">
+        <div class="card-header">
+          <span class="card-icon">🔍</span>
+          <span class="card-title">Context</span>
+        </div>
+        <div class="card-body">
+          Narrows the problem space. Without it the model guesses what you're working on — it may give advice for the wrong stack, wrong scale, or wrong failure mode entirely.
+        </div>
+      </div>
+
+      <div class="card card-accent-task">
+        <div class="card-header">
+          <span class="card-icon" style="font-size:0.95rem;">🎯 🚧</span>
+          <span class="card-title">Task + Constraints</span>
+        </div>
+        <div class="card-body">
+          Tells the model exactly what to do and what NOT to do. Without clear scope the model broadens its answer, adding noise and missing the specific bottleneck you care about.
+        </div>
+      </div>
+
+      <div class="card card-accent-format">
+        <div class="card-header">
+          <span class="card-icon">📋</span>
+          <span class="card-title">Output Format</span>
+        </div>
+        <div class="card-body">
+          Makes output parseable and consistent. Essential for automation — without it you get prose that varies per run, is hard to diff, and cannot be reliably post-processed.
+        </div>
+      </div>
+
+    </div>
+  </div><!-- /bottom-section -->
+
+</div><!-- /workspace -->
+
+<script>
+const state = { role:true, context:true, task:true, constraints:true, format:true };
+
+const CONTENT = {
+  role:        { color:'#c084fc', tag:'ROLE', text:'You are a senior backend engineer specialising in Java microservices and distributed systems with 10 years of experience in high-throughput payment systems.' },
+  context:     { color:'#60a5fa', tag:'CONTEXT', text:'We have a payment processing service handling 10,000 TPS. Stack: Spring Boot 3, Kafka, PostgreSQL. Currently experiencing latency spikes at peak load.' },
+  task:        { color:'#34d399', tag:'TASK', text:'Review the following code and identify performance bottlenecks.' },
+  constraints: { color:'#fbbf24', tag:'CONSTRAINTS', text:'Focus only on database interaction patterns. Do not suggest architectural changes. Assume Java 21.' },
+  format:      { color:'#f87171', tag:'FORMAT', text:'Numbered list. Each finding: Issue · Severity: High/Med/Low · Fix with code snippet.' },
+};
+
+const OUTPUTS = {
+  '11111': `1. <strong>N+1 Query Pattern</strong> [HIGH]<br>
+   Issue: findTransactionsByCustomer() executes N additional SELECT statements inside a loop.<br>
+   Fix: Use JOIN FETCH or batch loading: <code style="color:#7c3aed">@Query("SELECT t FROM Transaction t JOIN FETCH t.customer WHERE t.status = :status")</code><br><br>
+2. <strong>Missing Index on status column</strong> [HIGH]<br>
+   Issue: WHERE status = 'PENDING' performs full table scan at 10K TPS.<br>
+   Fix: <code style="color:#7c3aed">CREATE INDEX idx_txn_status ON transactions(status) WHERE status = 'PENDING';</code><br><br>
+3. <strong>Unbounded result set</strong> [MEDIUM]<br>
+   Issue: No LIMIT clause — query returns all rows at peak load.<br>
+   Fix: Add pagination: <code style="color:#7c3aed">Pageable pageable = PageRequest.of(0, 100);</code>`,
+
+  '00000': `Sure! There are a few things you might want to look at in your code. Performance is an important consideration for any application. You might want to check database queries, caching, and connection pooling. Also consider using async patterns and batch operations where possible. Hope this helps!`,
+
+  '10000': `As a senior backend engineer, I'd recommend reviewing your database queries for N+1 patterns, checking your connection pool configuration, and looking into caching strategies. There are several common performance issues in Java applications that you should be aware of.`,
+
+  '11000': `For a payment service at this scale with Spring Boot and PostgreSQL, the main areas to investigate are: database query optimization (especially N+1 patterns with Hibernate), connection pool settings (HikariCP), Kafka consumer group lag, and transaction boundary management. At 10K TPS you'll want to be careful about lock contention.`,
+
+  '11100': `Looking at your payment service specifically for database bottlenecks:
+<br>1. Check for N+1 queries in your transaction repository
+<br>2. Review your HikariCP connection pool sizing for 10K TPS
+<br>3. Look for missing indexes on high-frequency WHERE clauses
+<br>This is not an architectural review — just DB-layer focus.`,
+
+  '11110': `Database performance issues in your payment service at 10K TPS:
+<br><strong>Likely Issues:</strong>
+<br>• N+1 query patterns in Hibernate repositories
+<br>• Connection pool exhaustion under peak load
+<br>• Missing indexes on status/timestamp columns
+<br>• Unoptimized bulk operations
+<br><strong>Recommended fixes:</strong> Use JOIN FETCH, size HikariCP to (cores × 2 + 1), add indexes on hot columns.`
+};
+
+function toggle(key) {
+  state[key] = !state[key];
+  document.getElementById(`tb-${key}`).classList.toggle('on', state[key]);
+  update();
+}
+
+function getKey() {
+  return ['role','context','task','constraints','format'].map(k=>state[k]?'1':'0').join('');
+}
+
+function getScore() {
+  const weights = { role:20, context:25, task:20, constraints:20, format:15 };
+  return Object.entries(state).filter(([k,v])=>v).reduce((s,[k])=>s+(weights[k]||0),0);
+}
+
+function update() {
+  // Prompt preview
+  const preview = document.getElementById('prompt-preview');
+  const parts = ['role','context','task','constraints','format'].filter(k=>state[k]);
+  if (parts.length === 0) {
+    preview.innerHTML = '<span style="color:#4b5563">// No components selected — empty prompt</span>';
+  } else {
+    preview.innerHTML = parts.map(k=>{
+      const c = CONTENT[k];
+      return `<div class="prompt-block"><div class="block-tag" style="color:${c.color}">[${c.tag}]</div><div style="color:#94a3b8">${c.text}</div></div>`;
+    }).join('');
+  }
+
+  // Quality score
+  const score = getScore();
+  const qfill = document.getElementById('qfill');
+  const qscore = document.getElementById('qscore');
+  qscore.textContent = `${score}/100`;
+  qfill.style.width = score + '%';
+  qfill.style.background = score >= 80 ? '#34d399' : score >= 50 ? '#f59e0b' : '#ef4444';
+
+  // Output
+  const key = getKey();
+  const out = OUTPUTS[key] || OUTPUTS['11110'];
+  const score2 = getScore();
+
+  const dotColor = score2 >= 80 ? '#34d399' : score2 >= 50 ? '#f59e0b' : '#ef4444';
+  const qualLabel = score2 >= 80 ? 'HIGH QUALITY OUTPUT' : score2 >= 50 ? 'MODERATE QUALITY' : 'WEAK / VAGUE OUTPUT';
+
+  document.getElementById('output-preview').innerHTML = `
+    <div class="output-quality-label">
+      <div class="quality-dot" style="background:${dotColor}"></div>
+      <span style="color:${dotColor}">${qualLabel}</span>
+    </div>
+    <div style="font-size:0.85rem;line-height:1.7;color:#${score2>=80?'111827':'6b7280'}">${out}</div>
+  `;
+}
+
+update();
+</script>
+</body>
+</html>

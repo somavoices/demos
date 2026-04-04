@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAG Pipeline Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<style>
+:root { --page-accent: #0d9488; }
+body { display:flex; flex-direction:column; }
+
+/* TOP GRID */
+.top-grid { display:grid; grid-template-columns:2fr 3fr; min-height:450px; flex-shrink:0; }
+
+/* LEFT PANEL — Controls */
+.left-panel { padding:1.5rem; gap:1.25rem; }
+
+.section-label { margin-bottom:0.4rem; }
+
+.query-row { display:flex; gap:0.6rem; flex-wrap:wrap; }
+.query-chip {
+  background:var(--color-surface); border:1px solid var(--color-border);
+  border-radius:8px; padding:7px 14px;
+  font-family:var(--font-mono); font-size:0.78rem;
+  color:var(--color-text-secondary); cursor:pointer; transition:all 0.2s;
+}
+.query-chip:hover, .query-chip.active { border-color:var(--page-accent); color:var(--page-accent); background:var(--color-emerald-light); }
+
+.run-btn {
+  background:var(--page-accent); border:none; border-radius:8px;
+  padding:10px 24px; font-family:var(--font-sans);
+  font-size:0.9rem; font-weight:600; color:white; cursor:pointer;
+  transition:all 0.2s; display:flex; align-items:center; gap:0.5rem;
+  align-self:flex-start;
+}
+.run-btn:hover { background:var(--color-emerald-dark); transform:translateY(-1px); }
+.run-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+
+.active-query-display {
+  background:var(--color-surface-alt);
+  border:1px solid var(--color-border);
+  border-radius:8px;
+  padding:0.75rem 1rem;
+  font-family:var(--font-mono);
+  font-size:0.78rem;
+  color:var(--color-text-secondary);
+  line-height:1.5;
+}
+
+/* RIGHT PANEL — Pipeline */
+.right-panel {
+  background:var(--color-surface-alt);
+  padding:1.5rem;
+  overflow-y:auto;
+}
+
+/* PIPELINE */
+.pipeline-viz { display:flex; flex-direction:column; gap:0; }
+
+.pipe-step {
+  background:var(--color-surface); border:1px solid var(--color-border);
+  border-radius:12px; padding:1.25rem 1.5rem;
+  transition:all 0.3s; position:relative;
+  opacity:0.5;
+  margin-bottom:4px; box-shadow:var(--shadow-xs);
+}
+.pipe-step.active {
+  opacity:1; border-color:var(--page-accent);
+  box-shadow:0 0 20px rgba(13,148,136,0.08);
+}
+.pipe-step.done { opacity:0.85; border-color:var(--color-border-md); }
+.pipe-step.done .step-status { color:var(--color-emerald-dark); }
+
+.step-header { display:flex; align-items:center; gap:1rem; margin-bottom:0; }
+.step-num {
+  width:28px; height:28px; border-radius:50%;
+  background:var(--color-border-light); display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-mono); font-size:0.75rem; font-weight:700; flex-shrink:0;
+  transition:all 0.3s; color:var(--color-text-secondary);
+}
+.pipe-step.active .step-num { background:var(--page-accent); color:white; }
+.pipe-step.done .step-num { background:var(--color-emerald-100); color:var(--color-emerald-dark); }
+.step-name { font-weight:600; font-size:0.95rem; }
+.step-status { font-family:var(--font-mono); font-size:0.7rem; color:var(--color-text-muted); margin-left:auto; }
+.step-body { margin-top:1rem; font-family:var(--font-mono); font-size:0.8rem; color:var(--color-text-secondary); line-height:1.6; display:none; }
+.pipe-step.active .step-body, .pipe-step.done .step-body { display:block; }
+
+/* Arrow */
+.pipe-arrow { text-align:center; color:var(--page-accent); padding:4px 0; font-size:0.9rem; opacity:0.3; transition:opacity 0.3s; }
+.pipe-arrow.lit { opacity:1; }
+
+/* Chunks */
+.chunks { display:flex; flex-direction:column; gap:0.5rem; margin-top:0.75rem; }
+.chunk {
+  background:var(--color-surface-alt); border:1px solid var(--color-border); border-radius:6px;
+  padding:0.6rem 0.8rem; transition:all 0.3s;
+}
+.chunk.matched { border-color:var(--page-accent); background:var(--color-emerald-light); }
+.chunk-score { float:right; font-size:0.7rem; color:var(--page-accent); }
+.chunk-text { font-size:0.75rem; color:var(--color-text-secondary); }
+.chunk.matched .chunk-text { color:var(--color-text-secondary); }
+
+/* Answer */
+.answer-box {
+  background:var(--color-emerald-light); border:2px solid var(--page-accent);
+  border-radius:10px; padding:1.25rem;
+  font-size:0.9rem; line-height:1.7; color:var(--color-text-primary);
+}
+.answer-box .citation {
+  font-family:var(--font-mono); font-size:0.72rem; color:var(--color-green-deeper);
+  margin-top:0.5rem; border-top:1px solid var(--color-emerald-100); padding-top:0.5rem;
+}
+
+/* BOTTOM — VS comparison */
+.bottom-section {
+  background:var(--color-surface);
+  border-top:1px solid var(--color-border);
+  padding:1.5rem 2rem;
+  flex-shrink:0;
+}
+
+.vs-box {
+  display:grid; grid-template-columns:1fr 1fr; gap:1rem;
+}
+.vs-card { background:var(--color-surface); border:1px solid var(--color-border); border-radius:10px; padding:1.25rem; box-shadow:var(--shadow-xs); }
+.vs-card h4 { font-size:0.85rem; margin-bottom:0.75rem; }
+.vs-card p { font-family:var(--font-mono); font-size:0.78rem; color:var(--color-text-secondary); line-height:1.6; }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html">← Demos</a>
+  <span class="nav-sep">/</span>
+  <span class="cur">RAG Pipeline</span>
+</nav>
+
+<div class="page-header">
+  <h1>RAG <span>Pipeline</span></h1>
+  <div class="subtitle">// Watch a query travel through Retrieval-Augmented Generation step by step.</div>
+</div>
+
+<div class="top-grid">
+  <!-- LEFT: Controls -->
+  <div class="left-panel">
+    <div>
+      <div class="section-label">CHOOSE A QUERY:</div>
+      <div class="query-row" id="queries"></div>
+    </div>
+
+    <button class="run-btn" onclick="runPipeline()" id="runBtn">&#9654; Run Pipeline</button>
+
+    <div>
+      <div class="section-label">ACTIVE QUERY:</div>
+      <div class="active-query-display" id="queryDisplay">&mdash;</div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Pipeline visualization -->
+  <div class="right-panel">
+    <div class="section-label" style="margin-bottom:0.75rem">PIPELINE STEPS:</div>
+    <div class="pipeline-viz" id="pipeline"></div>
+  </div>
+</div>
+
+<!-- BOTTOM: RAG vs No-RAG comparison -->
+<div class="bottom-section" id="vs" style="display:none">
+  <div class="section-label" style="margin-bottom:0.75rem">RESULTS COMPARISON:</div>
+  <div class="vs-box">
+    <div class="vs-card">
+      <h4 style="color:#f43f5e">&#10060; Without RAG</h4>
+      <p id="no-rag-text">Model generates answer from training data — possibly outdated, possibly wrong, no source reference.</p>
+    </div>
+    <div class="vs-card">
+      <h4 style="color:#2dd4bf">&#10003; With RAG</h4>
+      <p id="rag-text">Answer grounded in retrieved document chunks. Source cited. Auditable. Current.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const QUERIES = [
+  {
+    label:'Home loan rate?',
+    text:'What is the current 5-year fixed home loan rate?',
+    chunks:[
+      { text:'Rate Card v3.2 §2: 5-year fixed home loan — 7.25% p.a. Effective 18-Mar-2026.', score:0.94, match:true },
+      { text:'Rate Card v3.2 §3: 3-year fixed home loan — 6.90% p.a. Effective 18-Mar-2026.', score:0.78, match:true },
+      { text:'Mortgage policy §5.1: LTV ratio must not exceed 80% for standard fixed products.', score:0.41, match:false },
+    ],
+    noRag:'The 5-year fixed home loan rate is approximately 6.5% — but this is from training data and may be months or years out of date.',
+    answer:'The current 5-year fixed home loan rate is <strong>7.25% p.a.</strong> This rate is effective as of 18 March 2026.',
+    citation:'Source: Rate Card v3.2, Section 2 (effective 18-Mar-2026)',
+  },
+  {
+    label:'AML check process?',
+    text:'What is the AML screening process for new accounts?',
+    chunks:[
+      { text:'AML Policy §4.2: All new accounts must be screened against OFAC, UN, and EU sanctions lists within 24h of opening.', score:0.91, match:true },
+      { text:'AML Policy §4.3: Enhanced due diligence required for PEP customers and high-risk jurisdictions.', score:0.85, match:true },
+      { text:'Onboarding SOP §2: Customer to provide government-issued ID and proof of address.', score:0.52, match:false },
+    ],
+    noRag:'New accounts typically undergo AML screening involving sanctions lists and PEP checks, though specific procedures vary by institution.',
+    answer:'New accounts must be screened against <strong>OFAC, UN, and EU sanctions lists within 24 hours</strong> of opening. Enhanced due diligence is required for PEP customers and high-risk jurisdictions.',
+    citation:'Source: AML Policy §4.2–4.3 (internal compliance document)',
+  },
+  {
+    label:'Loan eligibility?',
+    text:'What is the minimum credit score for a personal loan?',
+    chunks:[
+      { text:'Credit Policy §3.1: Minimum credit score for unsecured personal loans is 650 (CIBIL scale 300–900).', score:0.93, match:true },
+      { text:'Credit Policy §3.2: Applicants with score 650–699 qualify for Tier 3 pricing with higher interest rate.', score:0.87, match:true },
+      { text:'Credit Policy §3.3: Debt-to-income ratio must not exceed 40% for personal loan approval.', score:0.6, match:true },
+    ],
+    noRag:'Most banks require a minimum credit score around 700, though this varies significantly by lender and loan type.',
+    answer:'The minimum credit score for an unsecured personal loan is <strong>650 (CIBIL scale)</strong>. Scores 650–699 qualify at Tier 3 pricing. Debt-to-income ratio must also not exceed 40%.',
+    citation:'Source: Credit Policy §3.1–3.3',
+  }
+];
+
+let currentQ = 0;
+let running = false;
+
+function buildQueries() {
+  document.getElementById('queries').innerHTML = QUERIES.map((q,i) =>
+    `<div class="query-chip ${i===0?'active':''}" onclick="selectQ(${i})">${q.label}</div>`
+  ).join('');
+  updateQueryDisplay();
+}
+
+function updateQueryDisplay() {
+  const q = QUERIES[currentQ];
+  document.getElementById('queryDisplay').textContent = '\u201c' + q.text + '\u201d';
+}
+
+function selectQ(i) {
+  if (running) return;
+  currentQ = i;
+  document.querySelectorAll('.query-chip').forEach((el,j) => el.classList.toggle('active',j===i));
+  updateQueryDisplay();
+  resetPipeline();
+}
+
+function resetPipeline() {
+  document.getElementById('pipeline').innerHTML = '';
+  document.getElementById('vs').style.display = 'none';
+  buildInitialPipeline();
+}
+
+function buildInitialPipeline() {
+  const q = QUERIES[currentQ];
+  const steps = [
+    { id:'s1', name:'1. User Query', body:`<span style="color:#2dd4bf">"${q.text}"</span>` },
+    { id:'s2', name:'2. Embed Query', body:'Converting query to a 768-dimensional vector...' },
+    { id:'s3', name:'3. Similarity Search', body:'Searching vector DB for closest document chunks...' },
+    { id:'s4', name:'4. Top Chunks Retrieved', body:buildChunks(q.chunks, false) },
+    { id:'s5', name:'5. LLM Prompt Assembly', body:'Injecting retrieved chunks into LLM context...' },
+    { id:'s6', name:'6. Grounded Answer', body:'' },
+  ];
+
+  const pip = document.getElementById('pipeline');
+  pip.innerHTML = '';
+  steps.forEach((s, i) => {
+    if (i > 0) {
+      const arr = document.createElement('div');
+      arr.className = 'pipe-arrow'; arr.id = `arr-${i}`;
+      arr.textContent = '\u2193';
+      pip.appendChild(arr);
+    }
+    const el = document.createElement('div');
+    el.className = 'pipe-step';
+    el.id = s.id;
+    el.innerHTML = `<div class="step-header">
+      <div class="step-num">${i+1}</div>
+      <div class="step-name">${s.name}</div>
+      <div class="step-status" id="status-${i}">waiting</div>
+    </div>
+    <div class="step-body" id="body-${i}">${s.body}</div>`;
+    pip.appendChild(el);
+  });
+}
+
+function buildChunks(chunks, showMatch) {
+  return `<div class="chunks">${chunks.map(c =>
+    `<div class="chunk ${showMatch && c.match ? 'matched' : ''}">
+      <span class="chunk-score">${c.score.toFixed(2)}</span>
+      <div class="chunk-text">${c.text}</div>
+    </div>`
+  ).join('')}</div>`;
+}
+
+async function runPipeline() {
+  if (running) return;
+  running = true;
+  document.getElementById('runBtn').disabled = true;
+  document.getElementById('runBtn').textContent = '\u23F3 Running...';
+
+  const q = QUERIES[currentQ];
+
+  const activate = async (stepIdx, status, delay=600) => {
+    await sleep(delay);
+    document.getElementById(`s${stepIdx+1}`)?.classList.add('active');
+    const st = document.getElementById(`status-${stepIdx}`);
+    if (st) st.textContent = status;
+    if (stepIdx > 0) document.getElementById(`arr-${stepIdx}`)?.classList.add('lit');
+  };
+
+  const done = (stepIdx, status='done \u2713') => {
+    const el = document.getElementById(`s${stepIdx+1}`);
+    el?.classList.remove('active');
+    el?.classList.add('done');
+    const st = document.getElementById(`status-${stepIdx}`);
+    if (st) st.textContent = status;
+  };
+
+  // Step 0: Query
+  await activate(0, 'processing...', 200);
+  await sleep(600); done(0);
+
+  // Step 1: Embed
+  await activate(1, 'encoding...', 400);
+  document.getElementById('body-1').innerHTML = `<div style="display:flex;gap:4px;flex-wrap:wrap">
+    ${Array(16).fill(0).map((_,i)=>`<div style="width:28px;height:8px;border-radius:2px;background:rgba(13,148,136,${(Math.random()*0.5+0.2).toFixed(2)})"></div>`).join('')}
+  </div><div style="margin-top:0.5rem;font-size:0.7rem;color:#4b5563">768-dim vector produced</div>`;
+  await sleep(800); done(1);
+
+  // Step 2: Search
+  await activate(2, 'searching...', 400);
+  document.getElementById('body-2').innerHTML = `Computing cosine similarity against ${(Math.floor(Math.random()*50)+80).toLocaleString()} indexed chunks...`;
+  await sleep(1000); done(2);
+
+  // Step 3: Retrieved chunks
+  await activate(3, 'retrieved', 400);
+  document.getElementById('body-3').innerHTML = buildChunks(q.chunks, true);
+  await sleep(1200); done(3);
+
+  // Step 4: Assemble
+  await activate(4, 'assembling...', 400);
+  document.getElementById('body-4').innerHTML = `[System prompt]<br>[Chunk 1: ${q.chunks[0].text.slice(0,40)}...]<br>[Chunk 2: ${q.chunks[1].text.slice(0,40)}...]<br>[User query: "${q.text}"]`;
+  await sleep(900); done(4);
+
+  // Step 5: Answer
+  await activate(5, 'generating...', 400);
+  await sleep(1000);
+  document.getElementById('body-5').innerHTML = `<div class="answer-box">${q.answer}<div class="citation">&#128206; ${q.citation}</div></div>`;
+  done(5, 'complete \u2713');
+
+  // Show comparison
+  await sleep(300);
+  const vs = document.getElementById('vs');
+  vs.style.display = 'block';
+  document.getElementById('no-rag-text').textContent = q.noRag;
+  document.getElementById('rag-text').textContent = q.answer.replace(/<[^>]+>/g,'') + ' (Source cited.)';
+
+  running = false;
+  document.getElementById('runBtn').disabled = false;
+  document.getElementById('runBtn').textContent = '\u21BB Run Again';
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+buildQueries();
+buildInitialPipeline();
+</script>
+</body>
+</html>

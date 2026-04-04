@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hallucination Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<style>
+:root { --page-accent: #dc2626; }
+
+/* TOP TWO-PANEL GRID */
+.top-grid { display:grid; grid-template-columns:55fr 45fr; min-height:0; }
+
+/* LEFT PANEL */
+.panel-left { padding:1.5rem; gap:0; }
+
+/* RIGHT PANEL — tinted for this page */
+.panel-right { background:var(--color-red-light); border-left:1px solid var(--color-red-mid); padding:1.5rem; }
+
+/* BOTTOM MITIGATIONS */
+.bottom-mitigations { background:var(--color-surface); border-top:1px solid var(--color-border); padding:1.5rem 2rem; }
+
+/* SCENARIO PICKER */
+.scenarios { display:flex; gap:0.75rem; flex-wrap:wrap; margin-bottom:1.5rem; }
+.sc { background:var(--color-surface); border:1px solid var(--color-border); border-radius:8px; padding:8px 16px; font-family:var(--font-mono); font-size:0.78rem; color:var(--color-text-secondary); cursor:pointer; transition:all 0.2s; }
+.sc:hover, .sc.active { border-color:var(--page-accent); color:var(--page-accent); background:var(--color-red-light); }
+
+/* TOKEN MACHINE */
+.machine {
+  background:var(--color-surface); border:2px solid var(--color-border); border-radius:16px;
+  padding:1.5rem; margin-bottom:1.5rem; box-shadow:var(--shadow-xs);
+}
+.prompt-display {
+  font-family:var(--font-mono); font-size:0.9rem; color:var(--color-text-secondary);
+  line-height:1.7; margin-bottom:1.5rem; padding:1rem; background:var(--color-surface-alt);
+  border-radius:8px; border:1px solid var(--color-border);
+}
+.prompt-display .completing { color:var(--color-amber); font-weight:600; }
+
+.predict-label { font-family:var(--font-mono); font-size:0.65rem; color:var(--color-text-muted); letter-spacing:2px; margin-bottom:1rem; }
+
+/* Token options */
+.token-options { display:flex; gap:0.75rem; flex-wrap:wrap; margin-bottom:1.5rem; }
+.tok-option {
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  cursor:pointer; transition:all 0.3s; min-width:80px;
+}
+.tok-bar-wrap { width:100%; display:flex; flex-direction:column; align-items:center; gap:4px; }
+.tok-bar {
+  width:100%; border-radius:6px 6px 0 0;
+  transition:height 0.4s ease, background 0.3s;
+  min-height:4px;
+}
+.tok-word {
+  font-family:var(--font-mono); font-size:0.78rem;
+  padding:5px 10px; border-radius:6px; border:1px solid transparent;
+  transition:all 0.3s; text-align:center;
+}
+.tok-prob { font-family:var(--font-mono); font-size:0.65rem; color:var(--color-text-muted); }
+
+.tok-option.winner .tok-word { border-color:var(--page-accent); background:var(--color-red-light); color:var(--color-red-dark); }
+.tok-option.chosen .tok-word { border-color:var(--color-amber); background:var(--color-amber-light); color:var(--color-amber-dark); font-weight:700; animation:pulse 0.5s ease; }
+
+@keyframes pulse { 0%{transform:scale(1)} 50%{transform:scale(1.12)} 100%{transform:scale(1)} }
+
+/* Risk explanation */
+.risk-explainer {
+  height:100%;
+}
+.risk-title { font-family:var(--font-mono); font-size:0.65rem; color:var(--page-accent); letter-spacing:2px; margin-bottom:1rem; }
+.risk-steps { display:flex; flex-direction:column; gap:1rem; }
+.risk-step { display:flex; gap:1rem; align-items:flex-start; }
+.risk-icon { font-size:1.2rem; flex-shrink:0; margin-top:2px; }
+.risk-text { font-family:var(--font-mono); font-size:0.8rem; color:var(--color-red-deeper); line-height:1.5; }
+.risk-text strong { color:var(--color-red-dark); }
+
+/* Generated answer */
+.generated {
+  background:var(--color-surface-alt); border:2px solid var(--color-border); border-radius:10px;
+  padding:1.25rem; display:none;
+  animation:fadeIn 0.5s ease;
+}
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.gen-label { font-family:var(--font-mono); font-size:0.65rem; color:var(--color-text-muted); letter-spacing:2px; margin-bottom:0.75rem; display:flex; justify-content:space-between; }
+.gen-text { font-size:0.9rem; line-height:1.7; color:var(--color-text-primary); }
+.gen-warning { font-family:var(--font-mono); font-size:0.75rem; color:var(--color-amber-dark); margin-top:0.75rem; padding-top:0.75rem; border-top:1px solid var(--color-border-light); }
+
+/* Mitigation */
+.mitigations { display:grid; grid-template-columns:repeat(5,1fr); gap:1rem; }
+.mit { background:var(--color-green-pale); border:1px solid var(--color-emerald-100); border-radius:10px; padding:1rem; }
+.mit strong { display:block; color:var(--color-green-dark); font-size:0.85rem; margin-bottom:0.4rem; }
+.mit p { font-family:var(--font-mono); font-size:0.72rem; color:var(--color-text-secondary); line-height:1.5; }
+.mitigations-label { font-family:var(--font-mono); font-size:0.65rem; color:var(--color-text-muted); letter-spacing:2px; margin-bottom:1rem; }
+
+button.gen-btn {
+  background:var(--color-red-light); border:1px solid var(--color-red-mid); border-radius:8px;
+  padding:8px 18px; font-family:var(--font-sans); font-size:0.85rem;
+  font-weight:600; color:var(--page-accent); cursor:pointer; transition:all 0.2s;
+  display:flex; align-items:center; gap:0.5rem;
+}
+button.gen-btn:hover { background:var(--color-red-light); }
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html">&#8592; Demos</a>
+  <span class="nav-sep">/</span>
+  <span class="cur">Hallucination Demo</span>
+</nav>
+
+<!-- FULL-WIDTH HEADER -->
+<div class="page-header">
+  <h1>Hallucination <span>Visualized</span></h1>
+  <div class="subtitle">// The model picks the most statistically probable token — with no truth-check. Watch it happen.</div>
+</div>
+
+<!-- TOP TWO-PANEL GRID -->
+<div class="top-grid">
+
+  <!-- LEFT: Interactive demo -->
+  <div class="panel-left">
+    <div class="scenarios" id="sc-row"></div>
+
+    <div class="machine">
+      <div class="predict-label">MODEL IS COMPLETING:</div>
+      <div class="prompt-display" id="prompt-disp"></div>
+      <div class="predict-label">NEXT TOKEN PROBABILITY DISTRIBUTION:</div>
+      <div class="token-options" id="tok-opts"></div>
+      <button class="gen-btn" onclick="pick()" id="gen-btn">&#9889; Pick Most Probable Token</button>
+    </div>
+
+    <div class="generated" id="generated">
+      <div class="gen-label">
+        <span>GENERATED ANSWER</span>
+        <span id="hall-badge" style="color:#ef4444">&#9888; HALLUCINATION RISK</span>
+      </div>
+      <div class="gen-text" id="gen-text"></div>
+      <div class="gen-warning" id="gen-warning"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Why This Happens -->
+  <div class="panel-right">
+    <div class="risk-explainer">
+      <div class="risk-title">WHY THIS HAPPENS — MECHANICALLY</div>
+      <div class="risk-steps">
+        <div class="risk-step">
+          <div class="risk-icon">1&#65039;&#8419;</div>
+          <div class="risk-text"><strong>No truth verification step exists.</strong> The model only predicts the most statistically plausible next token from its training data.</div>
+        </div>
+        <div class="risk-step">
+          <div class="risk-icon">2&#65039;&#8419;</div>
+          <div class="risk-text"><strong>Training data may be outdated, jurisdiction-specific, or simply wrong</strong> — but the model can't know this. It learned patterns, not facts.</div>
+        </div>
+        <div class="risk-step">
+          <div class="risk-icon">3&#65039;&#8419;</div>
+          <div class="risk-text"><strong>High-confidence hallucinations</strong> occur when the training data contained many similar-sounding authoritative statements. The model learned that confident declarative sentences follow certain prompts — so it generates one.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- BOTTOM: Full-width mitigations -->
+<div class="bottom-mitigations">
+  <div class="mitigations-label">MITIGATIONS</div>
+  <div class="mitigations">
+    <div class="mit"><strong>RAG</strong><p>Ground answers in retrieved authoritative documents. The model presents. The document is the source of truth.</p></div>
+    <div class="mit"><strong>Temperature = 0</strong><p>Reduce variance. Pick the single most probable token. Still wrong if training data was wrong.</p></div>
+    <div class="mit"><strong>Cite your source</strong><p>Add "cite the exact source for each claim" in prompt. Forces model to anchor assertions.</p></div>
+    <div class="mit"><strong>Confidence elicitation</strong><p>"How confident are you? What might be wrong?" Often surfaces uncertainty the model would otherwise hide.</p></div>
+    <div class="mit"><strong>Human review gate</strong><p>Never automate irreversible actions on LLM output alone. Always have a human in the loop for high-stakes decisions.</p></div>
+  </div>
+</div>
+
+<script>
+const SCENARIOS = [
+  {
+    label:'Basel III rate',
+    prompt:'The Basel III Common Equity Tier 1 (CET1) minimum capital ratio is',
+    tokens:[
+      { word:'"4.5%"', prob:0.71, color:'#34d399', hallucinate:false },
+      { word:'"6%"',   prob:0.14, color:'#f97316' },
+      { word:'"8%"',   prob:0.09, color:'#f59e0b' },
+      { word:'"10%"',  prob:0.06, color:'#4b5563' },
+    ],
+    answer:'The Basel III Common Equity Tier 1 (CET1) minimum capital ratio is <strong>4.5%</strong> of risk-weighted assets.',
+    warning:'✓ 4.5% CET1 is the correct Basel III minimum. Note: total Tier 1 minimum is 6%, and with the capital conservation buffer (2.5%) CET1 must reach 7%. The model\'s answer is right here — but only because this fact is unambiguous and consistent in training data. In subtler regulatory questions, the same confidence can mask errors.',
+    hallucinate:false,
+  },
+  {
+    label:'Basel III Tier 1',
+    prompt:'The Basel III total Tier 1 capital minimum requirement is',
+    tokens:[
+      { word:'"4.5%"', prob:0.61, color:'#ef4444', hallucinate:true },
+      { word:'"6%"',   prob:0.24, color:'#f97316' },
+      { word:'"8%"',   prob:0.10, color:'#f59e0b' },
+      { word:'"10%"',  prob:0.05, color:'#4b5563' },
+    ],
+    answer:'The Basel III total Tier 1 capital minimum requirement is <strong>4.5%</strong>.',
+    warning:'⚠ Wrong. The correct answer is 6%. The model confuses CET1 (4.5%) with total Tier 1 (6%) — both are Basel III ratios and appear together constantly in training data. High confidence, wrong answer. This is precisely the hallucination risk for financial professionals.',
+    hallucinate:true,
+  },
+  {
+    label:'Interest rate',
+    prompt:'The current RBI repo rate in India is',
+    tokens:[
+      { word:'"6.5%"', prob:0.58, color:'#ef4444', hallucinate:true },
+      { word:'"6.25%"',prob:0.22, color:'#f97316' },
+      { word:'"6.75%"',prob:0.13, color:'#f59e0b' },
+      { word:'"7%"',   prob:0.07, color:'#4b5563' },
+    ],
+    answer:'The current RBI repo rate in India is <strong>6.5%</strong>.',
+    warning:'⚠ Training data has a cutoff date. This rate may be months or years out of date. The model picked the most common rate it saw — not necessarily the current one.',
+    hallucinate:true,
+  },
+  {
+    label:'Safe reasoning',
+    prompt:'The square root of 144 is',
+    tokens:[
+      { word:'"12"',   prob:0.97, color:'#34d399', hallucinate:false },
+      { word:'"11.9"', prob:0.015,color:'#6b7280' },
+      { word:'"13"',   prob:0.01, color:'#4b5563' },
+      { word:'"14"',   prob:0.005,color:'#374151' },
+    ],
+    answer:'The square root of 144 is <strong>12</strong>.',
+    warning:'✓ Mathematical facts appear very frequently and consistently in training data — extremely low hallucination risk. The probability distribution is dominated by the correct answer.',
+    hallucinate:false,
+  },
+];
+
+let current = 0;
+let picked = false;
+
+function buildScenarios() {
+  document.getElementById('sc-row').innerHTML = SCENARIOS.map((s,i)=>
+    `<div class="sc ${i===0?'active':''}" onclick="select(${i})">${s.label}</div>`
+  ).join('');
+}
+
+function select(i) {
+  current = i; picked = false;
+  document.querySelectorAll('.sc').forEach((el,j)=>el.classList.toggle('active',j===i));
+  render();
+}
+
+function render() {
+  const sc = SCENARIOS[current];
+  document.getElementById('prompt-disp').innerHTML = `${sc.prompt} <span class="completing">___</span>`;
+  document.getElementById('generated').style.display = 'none';
+  document.getElementById('gen-btn').textContent = '⚡ Pick Most Probable Token';
+  picked = false;
+
+  const maxP = Math.max(...sc.tokens.map(t=>t.prob));
+  const HEIGHT = 120;
+
+  document.getElementById('tok-opts').innerHTML = sc.tokens.map((t,i)=>`
+    <div class="tok-option" id="topt-${i}">
+      <div class="tok-bar-wrap">
+        <div class="tok-prob">${(t.prob*100).toFixed(0)}%</div>
+        <div class="tok-bar" style="height:${(t.prob/maxP)*HEIGHT}px;background:${t.color};opacity:${0.4+t.prob*0.6}"></div>
+      </div>
+      <div class="tok-word" style="color:${t.color}">${t.word}</div>
+    </div>
+  `).join('');
+}
+
+function pick() {
+  if (picked) { select(current); return; }
+  picked = true;
+  const sc = SCENARIOS[current];
+  const winner = sc.tokens[0]; // highest prob
+
+  document.getElementById('topt-0').classList.add('chosen');
+  sc.tokens.forEach((_,i)=>{ if(i>0) document.getElementById('topt-'+i)?.classList.add('winner'); });
+
+  const gen = document.getElementById('generated');
+  gen.style.display = 'block';
+  document.getElementById('gen-text').innerHTML = sc.answer;
+  document.getElementById('gen-warning').textContent = sc.warning;
+
+  const badge = document.getElementById('hall-badge');
+  if (sc.hallucinate) {
+    badge.textContent = '⚠ HALLUCINATION RISK'; badge.style.color = '#ef4444';
+  } else {
+    badge.textContent = '✓ LOW RISK'; badge.style.color = '#34d399';
+  }
+  document.getElementById('gen-btn').textContent = '↺ Reset';
+}
+
+buildScenarios();
+render();
+</script>
+</body>
+</html>

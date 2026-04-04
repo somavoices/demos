@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inverted Index — LLM Demos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="theme.css" />
+  <style>
+    :root { --page-accent: #059669; }
+    body { line-height: 1.6; }
+
+    nav { padding: 14px 24px; position: sticky; top: 0; z-index: 100; }
+    nav a { font-weight: 500; }
+    nav .cur { font-weight: 600; }
+
+    /* PAGE WRAPPER */
+    .page-wrapper {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+
+    /* FULL-WIDTH HEADER — inside .page-wrapper, no bg/border */
+    .page-header { padding: 40px 0 28px; background: none; border: none; }
+    .page-header h1 { font-size: clamp(1.8rem, 4vw, 2.8rem); line-height: 1.15; letter-spacing: -0.5px; }
+    .page-header .subtitle { font-size: 13px; margin-top: 10px; }
+
+    /* TOP TWO-PANEL GRID */
+    .top-grid {
+      display: grid;
+      grid-template-columns: 2fr 3fr;
+      min-height: 480px;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 28px;
+    }
+
+    /* LEFT PANEL — Controls */
+    .panel-left {
+      background: var(--color-surface);
+      padding: 1.5rem;
+      border-right: 1px solid var(--color-border);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .panel-left-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-text-secondary);
+      font-family: var(--font-mono);
+    }
+
+    /* RIGHT PANEL — Results */
+    .panel-right {
+      background: var(--color-surface-alt);
+      padding: 1.5rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .panel-right-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-text-secondary);
+      font-family: var(--font-mono);
+    }
+
+    /* BOTTOM — Full-width explanation */
+    .bottom-section {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
+      padding: 1.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    /* SECTION HEADINGS inside bottom */
+    .section-heading {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section-heading .badge {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      background: var(--color-emerald-light);
+      color: var(--color-green-deeper);
+      border: 1px solid var(--color-emerald-mid);
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-weight: 500;
+    }
+
+    /* DIVIDER inside bottom */
+    .bottom-divider {
+      border: none;
+      border-top: 1px solid var(--color-border);
+    }
+
+    /* DOC INPUTS */
+    .doc-inputs {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .doc-input-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 5px;
+      font-family: 'Fira Code', monospace;
+    }
+    .doc-input-group label.lbl-a { color: var(--color-indigo-dark); }
+    .doc-input-group label.lbl-b { color: var(--color-amber-dark); }
+    .doc-input-group label.lbl-c { color: var(--color-violet-deep); }
+    .doc-input-group textarea {
+      width: 100%;
+      height: 72px;
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-family: var(--font-sans);
+      font-size: 12px;
+      color: var(--color-text-primary);
+      background: var(--color-surface-alt);
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .doc-input-group textarea:focus { border-color: var(--page-accent); background: var(--color-surface); }
+
+    /* BUILD BUTTON */
+    .btn-build {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--page-accent);
+      color: var(--color-surface);
+      border: none;
+      border-radius: 8px;
+      padding: 10px 20px;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      align-self: flex-start;
+    }
+    .btn-build:hover { background: var(--color-emerald-dark); }
+    .btn-build:active { transform: scale(0.98); }
+
+    /* SEARCH BOX */
+    .search-box-wrap {
+      position: relative;
+    }
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--color-text-muted);
+      font-size: 16px;
+      pointer-events: none;
+    }
+    #search-input {
+      width: 100%;
+      padding: 10px 14px 10px 36px;
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      color: var(--color-text-primary);
+      background: var(--color-surface-alt);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    #search-input:focus { border-color: var(--page-accent); background: var(--color-surface); }
+
+    /* HINT CHIPS */
+    .hints {
+      font-size: 12px;
+      color: var(--color-text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .hint-chip {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      background: var(--color-border-light);
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      padding: 2px 8px;
+      cursor: pointer;
+      color: var(--color-text-secondary);
+      transition: all 0.15s;
+    }
+    .hint-chip:hover {
+      background: var(--color-emerald-light);
+      border-color: var(--color-emerald-mid);
+      color: var(--color-green-deeper);
+    }
+
+    /* INDEX OUTPUT */
+    #index-output {
+      min-height: 40px;
+    }
+    .index-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-secondary);
+      font-family: var(--font-mono);
+      margin-bottom: 8px;
+    }
+    .index-entry {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--color-border-light);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+    .index-entry.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .index-entry.highlighted {
+      background: var(--color-emerald-light);
+      border-radius: 6px;
+      padding-left: 8px;
+      border-bottom-color: var(--color-emerald-mid);
+    }
+    .index-entry .ie-word {
+      color: var(--page-accent);
+      font-weight: 600;
+      min-width: 120px;
+    }
+    .ie-arrow { color: var(--color-text-muted); }
+    .ie-pills { display: flex; gap: 5px; flex-wrap: wrap; }
+
+    /* SEARCH RESULT */
+    .search-result {
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      min-height: 40px;
+    }
+    .search-result.found {
+      background: var(--color-emerald-light);
+      border: 1px solid var(--color-emerald-mid);
+      color: var(--color-green-deeper);
+    }
+    .search-result.not-found {
+      background: var(--color-amber-100);
+      border: 1px solid var(--color-amber-mid);
+      color: var(--color-amber-deeper);
+    }
+    .search-result.empty {
+      background: var(--color-border-light);
+      border: 1px solid var(--color-border);
+      color: var(--color-text-muted);
+    }
+
+    /* DOC PILLS */
+    .doc-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+    .doc-pill {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+    }
+    .pill-d1 { background: var(--color-violet-light); color: var(--color-violet-dark); border-color: var(--color-indigo-100); }
+    .pill-d2 { background: var(--color-amber-100); color: var(--color-amber-deeper); border-color: var(--color-amber-bright); }
+    .pill-d3 { background: var(--color-violet-pale); color: var(--color-violet-deep); border-color: var(--color-indigo-mid); }
+
+    /* ===== BOTTOM SECTION STYLES ===== */
+
+    /* FORWARD vs INVERTED COMPARE */
+    .index-compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 620px) {
+      .index-compare { grid-template-columns: 1fr; }
+    }
+    .index-panel {
+      background: var(--color-surface-alt);
+      border: 1px solid var(--color-border);
+      border-radius: 10px;
+      padding: 18px 20px;
+    }
+    .index-panel h3 {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-secondary);
+      margin-bottom: 14px;
+      font-family: var(--font-mono);
+    }
+    .forward-row {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      margin-bottom: 8px;
+      color: var(--color-text-secondary);
+    }
+    .forward-row .doc-label {
+      color: var(--color-text-primary);
+      font-weight: 500;
+    }
+    .forward-row .word-list {
+      color: var(--color-text-secondary);
+    }
+    .inv-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 9px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+    }
+    .inv-word {
+      color: var(--page-accent);
+      font-weight: 600;
+      min-width: 100px;
+    }
+    .inv-arrow { color: var(--color-text-muted); }
+
+    /* EXPLANATION */
+    .explanation {
+      background: var(--color-surface-alt);
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      padding: 14px 18px;
+      font-size: 14px;
+      color: var(--color-text-secondary);
+      margin-bottom: 16px;
+    }
+    .explanation strong { color: var(--page-accent); }
+
+    /* VOCAB COMPARE */
+    .vocab-compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 620px) {
+      .vocab-compare { grid-template-columns: 1fr; }
+    }
+    .vocab-card {
+      border-radius: 10px;
+      padding: 18px 20px;
+    }
+    .vocab-card.inverted-fail {
+      background: var(--color-red-light);
+      border: 1px solid var(--color-red-mid);
+    }
+    .vocab-card.embed-win {
+      background: var(--color-emerald-light);
+      border: 1px solid var(--color-emerald-mid);
+    }
+    .vocab-card h3 {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 10px;
+      font-family: var(--font-mono);
+    }
+    .vocab-card.inverted-fail h3 { color: var(--color-red-dark); }
+    .vocab-card.embed-win h3 { color: var(--color-green-deeper); }
+    .vocab-query {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      background: rgba(0,0,0,0.04);
+      border-radius: 6px;
+      padding: 5px 9px;
+      margin-bottom: 12px;
+      color: var(--color-text-secondary);
+    }
+    .vocab-result {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .vocab-card.inverted-fail .vocab-result { color: var(--color-red-dark); }
+    .vocab-card.embed-win .vocab-result { color: var(--page-accent); }
+    .vocab-because {
+      font-size: 13px;
+      color: var(--color-text-secondary);
+      line-height: 1.5;
+    }
+    .vocab-card.inverted-fail .vocab-because { color: var(--color-red-deeper); opacity: 0.8; }
+    .vocab-card.embed-win .vocab-because { color: var(--color-green-deeper); opacity: 0.85; }
+
+    /* LIMITATIONS TABLE */
+    .limits-table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    thead tr {
+      background: var(--page-accent);
+      color: var(--color-surface);
+    }
+    thead th {
+      padding: 11px 16px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 13px;
+      letter-spacing: 0.03em;
+    }
+    tbody tr {
+      border-bottom: 1px solid var(--color-border-light);
+      transition: background 0.1s;
+    }
+    tbody tr:hover { background: var(--color-surface-alt); }
+    tbody tr:last-child { border-bottom: none; }
+    td {
+      padding: 10px 16px;
+      vertical-align: middle;
+    }
+    td:first-child { font-weight: 600; color: var(--color-text-secondary); }
+    td:not(:first-child) { font-family: var(--font-mono); font-size: 13px; }
+    .tick { color: var(--page-accent); font-weight: 700; }
+    .cross { color: var(--color-red); font-weight: 700; }
+    .approx { color: var(--color-amber-dark); font-weight: 700; }
+
+    /* INSIGHT BOX */
+    .insight-box {
+      background: var(--color-emerald-light);
+      border: 1px solid var(--color-emerald-mid);
+      border-radius: 10px;
+      padding: 18px 22px;
+      color: var(--color-green-deeper);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+    .insight-box strong { font-weight: 700; }
+    .insight-box .tech-term {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      background: rgba(5, 150, 105, 0.12);
+      border-radius: 4px;
+      padding: 1px 6px;
+    }
+
+    /* RESPONSIVE: stack panels on narrow screens */
+    @media (max-width: 700px) {
+      .top-grid {
+        grid-template-columns: 1fr;
+        min-height: auto;
+      }
+      .panel-left {
+        border-right: none;
+        border-bottom: 1px solid var(--color-border);
+      }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html">← Demos</a>
+  <span class="nav-sep">/</span>
+  <span class="cur">Inverted Index</span>
+</nav>
+
+<div class="page-wrapper">
+
+  <!-- FULL-WIDTH HEADER -->
+  <div class="page-header">
+    <h1>Inverted <span>Index</span></h1>
+    <p class="subtitle">// the data structure powering keyword search since the 1960s — and why it's not enough for semantic search.</p>
+  </div>
+
+  <!-- TOP: TWO-PANEL GRID -->
+  <div class="top-grid">
+
+    <!-- LEFT: Controls -->
+    <div class="panel-left">
+      <div class="panel-left-title">Index Builder</div>
+
+      <div class="doc-inputs">
+        <div class="doc-input-group">
+          <label class="lbl-a">Doc A</label>
+          <textarea id="doc-a">The bank approved the loan after reviewing the credit risk profile.</textarea>
+        </div>
+        <div class="doc-input-group">
+          <label class="lbl-b">Doc B</label>
+          <textarea id="doc-b">The river bank flooded after heavy rainfall damaged the bridge.</textarea>
+        </div>
+        <div class="doc-input-group">
+          <label class="lbl-c">Doc C</label>
+          <textarea id="doc-c">Credit card fraud detection requires advanced risk management systems.</textarea>
+        </div>
+      </div>
+
+      <button class="btn-build" id="btn-build" onclick="buildIndex()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/>
+          <polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/>
+        </svg>
+        Build Index
+      </button>
+
+      <div class="search-box-wrap">
+        <span class="search-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </span>
+        <input type="text" id="search-input" placeholder="Search the index..." oninput="doSearch(this.value)" />
+      </div>
+
+      <div class="hints">
+        <span>Try:</span>
+        <span class="hint-chip" onclick="setSearch('bank')">'bank'</span>
+        <span class="hint-chip" onclick="setSearch('risk')">'risk'</span>
+        <span class="hint-chip" onclick="setSearch('flooding')">'flooding'</span>
+        <span class="hint-chip" onclick="setSearch('credit')">'credit'</span>
+        <span class="hint-chip" onclick="setSearch('fraud')">'fraud'</span>
+      </div>
+    </div>
+
+    <!-- RIGHT: Results -->
+    <div class="panel-right">
+      <div class="panel-right-title">Inverted Index</div>
+
+      <div id="index-output"></div>
+
+      <div id="search-result" class="search-result empty">Start typing to search the index…</div>
+    </div>
+
+  </div><!-- /top-grid -->
+
+  <!-- BOTTOM: Full-width explanations -->
+  <div class="bottom-section">
+
+    <!-- Forward vs Inverted -->
+    <div>
+      <div class="section-heading">
+        What is an Inverted Index? <span class="badge">concept</span>
+      </div>
+
+      <div class="explanation">
+        A normal <strong>forward index</strong> maps <em>document → words</em>. An <strong>inverted index</strong> flips this:
+        <em>word → list of documents containing it</em>. This makes keyword lookup <strong>O(1)</strong> instead of scanning
+        every document.
+      </div>
+
+      <div class="index-compare">
+        <div class="index-panel">
+          <h3>Forward Index</h3>
+          <div class="forward-row">
+            <span class="doc-label">Doc 1:</span>
+            <span class="word-list"> ["risk", "management", "bank", "loan"]</span>
+          </div>
+          <div class="forward-row">
+            <span class="doc-label">Doc 2:</span>
+            <span class="word-list"> ["bank", "river", "flood", "risk"]</span>
+          </div>
+          <div class="forward-row">
+            <span class="doc-label">Doc 3:</span>
+            <span class="word-list"> ["loan", "approval", "credit", "rate"]</span>
+          </div>
+        </div>
+
+        <div class="index-panel">
+          <h3>Inverted Index</h3>
+          <div class="inv-row">
+            <span class="inv-word">"risk"</span>
+            <span class="inv-arrow">→</span>
+            <div class="doc-pills">
+              <span class="doc-pill pill-d1">Doc 1</span>
+              <span class="doc-pill pill-d2">Doc 2</span>
+            </div>
+          </div>
+          <div class="inv-row">
+            <span class="inv-word">"bank"</span>
+            <span class="inv-arrow">→</span>
+            <div class="doc-pills">
+              <span class="doc-pill pill-d1">Doc 1</span>
+              <span class="doc-pill pill-d2">Doc 2</span>
+            </div>
+          </div>
+          <div class="inv-row">
+            <span class="inv-word">"loan"</span>
+            <span class="inv-arrow">→</span>
+            <div class="doc-pills">
+              <span class="doc-pill pill-d1">Doc 1</span>
+              <span class="doc-pill pill-d3">Doc 3</span>
+            </div>
+          </div>
+          <div class="inv-row">
+            <span class="inv-word">"management"</span>
+            <span class="inv-arrow">→</span>
+            <div class="doc-pills">
+              <span class="doc-pill pill-d1">Doc 1</span>
+            </div>
+          </div>
+          <div class="inv-row">
+            <span class="inv-word">"river"</span>
+            <span class="inv-arrow">→</span>
+            <div class="doc-pills">
+              <span class="doc-pill pill-d2">Doc 2</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="bottom-divider" />
+
+    <!-- Vocabulary Problem -->
+    <div>
+      <div class="section-heading">
+        The Vocabulary Problem <span class="badge">why embeddings win</span>
+      </div>
+
+      <p style="font-size:14px;color:#6b7280;margin-bottom:18px;">
+        Query: <strong style="color:#111827;font-family:'Fira Code',monospace;">"financial institution"</strong>
+      </p>
+
+      <div class="vocab-compare">
+        <div class="vocab-card inverted-fail">
+          <h3>Inverted Index</h3>
+          <div class="vocab-query">search("financial institution")</div>
+          <div class="vocab-result">No documents found</div>
+          <div class="vocab-because">
+            Neither "financial" nor "institution" appears verbatim in any document —
+            even though Doc A is clearly about banking and finance.
+          </div>
+        </div>
+
+        <div class="vocab-card embed-win">
+          <h3>Embedding Search</h3>
+          <div class="vocab-query">embed("financial institution")</div>
+          <div class="vocab-result">Doc A (similarity: 0.89)</div>
+          <div class="vocab-because">
+            "bank", "loan", "credit" are semantically close to "financial institution"
+            in vector space — the meaning is captured, not just the spelling.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="bottom-divider" />
+
+    <!-- Limitations Table -->
+    <div>
+      <div class="section-heading">
+        Limitations at a Glance <span class="badge">comparison</span>
+      </div>
+
+      <div class="limits-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Problem</th>
+              <th>Inverted Index</th>
+              <th>Embeddings</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Exact keyword</td>
+              <td><span class="tick">✓</span> Fast</td>
+              <td><span class="approx">~</span> Approximate</td>
+            </tr>
+            <tr>
+              <td>Synonyms ("car" vs "automobile")</td>
+              <td><span class="cross">✗</span> Misses</td>
+              <td><span class="tick">✓</span> Catches</td>
+            </tr>
+            <tr>
+              <td>Semantic meaning</td>
+              <td><span class="cross">✗</span> None</td>
+              <td><span class="tick">✓</span> Captures</td>
+            </tr>
+            <tr>
+              <td>Multilingual</td>
+              <td><span class="cross">✗</span> Separate indexes</td>
+              <td><span class="tick">✓</span> Shared space</td>
+            </tr>
+            <tr>
+              <td>Explainability</td>
+              <td><span class="tick">✓</span> Transparent</td>
+              <td><span class="cross">✗</span> Black box</td>
+            </tr>
+            <tr>
+              <td>Speed at scale</td>
+              <td><span class="tick">✓</span> Very fast</td>
+              <td><span class="approx">~</span> Requires ANN index</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <hr class="bottom-divider" />
+
+    <!-- Modern Search Insight -->
+    <div>
+      <div class="section-heading">
+        Modern Search = Both <span class="badge">hybrid</span>
+      </div>
+
+      <div class="insight-box">
+        Modern search engines (<span class="tech-term">Elasticsearch</span>, <span class="tech-term">Azure AI Search</span>)
+        use <strong>HYBRID search</strong>: <span class="tech-term">BM25</span> (inverted index) for exact match recall
+        + <strong>vector embeddings</strong> for semantic recall, then fuse the scores with
+        <span class="tech-term">Reciprocal Rank Fusion (RRF)</span>.
+        Neither alone is sufficient.
+      </div>
+    </div>
+
+  </div><!-- /bottom-section -->
+
+</div><!-- /page-wrapper -->
+
+<script>
+  const STOPWORDS = new Set([
+    'the','a','an','after','of','in','for','is','was','by','to','and','or','it',
+    'its','this','that','with','from','are','be','as','at','on','has','have',
+    'had','not','but','their','they','which','who','what','when','where','how',
+    'all','each','both','few','more','most','other','some','such','than','too',
+    'very','can','will','just','been','also','into','over','under','about','up',
+    'out','if','then','so','we','he','she','you','i','me','him','her','us','them'
+  ]);
+
+  // Shared state
+  let builtIndex = {}; // word -> Set of doc keys
+  let indexEntries = []; // sorted list of words
+
+  function tokenize(text) {
+    const tokens = text.toLowerCase().match(/\b[a-z]{3,}\b/g) || [];
+    return tokens.filter(t => !STOPWORDS.has(t));
+  }
+
+  function buildIndex() {
+    const docs = {
+      'Doc A': document.getElementById('doc-a').value,
+      'Doc B': document.getElementById('doc-b').value,
+      'Doc C': document.getElementById('doc-c').value,
+    };
+
+    builtIndex = {};
+
+    for (const [docKey, text] of Object.entries(docs)) {
+      const tokens = tokenize(text);
+      const unique = new Set(tokens);
+      for (const token of unique) {
+        if (!builtIndex[token]) builtIndex[token] = new Set();
+        builtIndex[token].add(docKey);
+      }
+    }
+
+    indexEntries = Object.keys(builtIndex).sort();
+
+    const output = document.getElementById('index-output');
+    output.innerHTML = '';
+
+    indexEntries.forEach((word, i) => {
+      const docs = [...builtIndex[word]];
+      const row = document.createElement('div');
+      row.className = 'index-entry';
+      row.dataset.word = word;
+
+      const wordSpan = document.createElement('span');
+      wordSpan.className = 'ie-word';
+      wordSpan.textContent = `"${word}"`;
+
+      const arrow = document.createElement('span');
+      arrow.className = 'ie-arrow';
+      arrow.textContent = '→';
+
+      const pills = document.createElement('div');
+      pills.className = 'ie-pills';
+
+      docs.sort().forEach(d => {
+        const pill = document.createElement('span');
+        pill.className = 'doc-pill ' + docPillClass(d);
+        pill.textContent = d;
+        pills.appendChild(pill);
+      });
+
+      row.appendChild(wordSpan);
+      row.appendChild(arrow);
+      row.appendChild(pills);
+      output.appendChild(row);
+
+      setTimeout(() => row.classList.add('visible'), 50 + i * 50);
+    });
+
+    // Re-run current search against new index
+    const searchVal = document.getElementById('search-input').value;
+    if (searchVal) doSearch(searchVal);
+  }
+
+  function docPillClass(doc) {
+    if (doc === 'Doc A') return 'pill-d1';
+    if (doc === 'Doc B') return 'pill-d2';
+    if (doc === 'Doc C') return 'pill-d3';
+    return '';
+  }
+
+  function doSearch(query) {
+    const q = query.trim().toLowerCase();
+    const resultEl = document.getElementById('search-result');
+
+    // Remove all highlights
+    document.querySelectorAll('.index-entry').forEach(el => {
+      el.classList.remove('highlighted');
+    });
+
+    if (!q) {
+      resultEl.textContent = 'Start typing to search the index…';
+      resultEl.className = 'search-result empty';
+      return;
+    }
+
+    if (indexEntries.length === 0) {
+      resultEl.textContent = 'Build the index first, then search.';
+      resultEl.className = 'search-result empty';
+      return;
+    }
+
+    // Find matching words
+    const matchingWords = indexEntries.filter(w => w.includes(q));
+
+    if (matchingWords.length === 0) {
+      resultEl.textContent = 'No results — try a synonym or related term';
+      resultEl.className = 'search-result not-found';
+      return;
+    }
+
+    // Collect docs
+    const foundDocs = new Set();
+    matchingWords.forEach(w => {
+      builtIndex[w].forEach(d => foundDocs.add(d));
+    });
+
+    // Highlight rows
+    document.querySelectorAll('.index-entry').forEach(el => {
+      if (matchingWords.includes(el.dataset.word)) {
+        el.classList.add('highlighted');
+      }
+    });
+
+    const docList = [...foundDocs].sort().join(', ');
+    const wordList = matchingWords.map(w => `"${w}"`).join(', ');
+    resultEl.innerHTML = `Found in: <strong>${docList}</strong> &nbsp;·&nbsp; matched ${matchingWords.length > 1 ? 'terms' : 'term'}: ${wordList}`;
+    resultEl.className = 'search-result found';
+  }
+
+  function setSearch(term) {
+    const input = document.getElementById('search-input');
+    input.value = term;
+    doSearch(term);
+    input.focus();
+  }
+
+  // Build on load with default docs
+  window.addEventListener('DOMContentLoaded', () => {
+    buildIndex();
+  });
+</script>
+</body>
+</html>

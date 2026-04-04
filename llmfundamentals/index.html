@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM Visual Demos</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="index.css">
+<style>
+body { background: var(--color-bg-index); color: var(--color-text-index); overflow-x: hidden; }
+</style>
+</head>
+<body>
+
+<!-- STICKY PROGRESS NAV — dot style -->
+<nav class="progress-banner">
+  <div class="progress-inner">
+    <a href="tokenizer.html"        class="prog-dot l1d" title="1 · Tokenizer">1</a>
+    <div class="prog-div"></div>
+    <a href="embeddings.html"       class="prog-dot l1d" title="2 · Embeddings">2</a>
+    <div class="prog-div"></div>
+    <a href="cosine.html"           class="prog-dot l1d" title="3 · Cosine Sim">3</a>
+    <div class="prog-div"></div>
+    <a href="distance-euclidean.html" class="prog-dot l1d" title="4 · Euclidean">4</a>
+    <div class="prog-div"></div>
+    <a href="inverted-index.html"   class="prog-dot l1d" title="5 · Inverted Index">5</a>
+    <div class="prog-div-arrow">▸</div>
+    <a href="attention.html"        class="prog-dot l2d" title="6 · Attention">6</a>
+    <div class="prog-div"></div>
+    <a href="temperature.html"      class="prog-dot l2d" title="7 · Temperature">7</a>
+    <div class="prog-div"></div>
+    <a href="hallucination.html"    class="prog-dot l2d" title="8 · Hallucination">8</a>
+    <div class="prog-div-arrow">▸</div>
+    <a href="prompt-builder.html"   class="prog-dot l3d" title="9 · Prompting">9</a>
+    <div class="prog-div"></div>
+    <a href="rag.html"              class="prog-dot l3d" title="10 · RAG">10</a>
+    <div class="prog-div"></div>
+    <a href="react-loop.html"       class="prog-dot l3d" title="11 · ReAct">11</a>
+    <div class="prog-div-arrow">▸</div>
+    <a href="chunking.html"         class="prog-dot l4d" title="12 · Chunking">12</a>
+    <div class="prog-div"></div>
+    <a href="context-window.html"   class="prog-dot l4d" title="13 · Context Window">13</a>
+    <div class="prog-div"></div>
+    <a href="rag-vs-finetune.html"  class="prog-dot l4d" title="14 · Prompt vs RAG vs Fine-Tuning">14</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="hero-bg"></div>
+  <canvas class="hero-canvas" id="heroCanvas"></canvas>
+  <div class="hero-badge">LLM VISUAL LEARNING LAB</div>
+  <h1>Understand LLMs<br><em>by doing, not reading</em></h1>
+  <p class="hero-sub">14 interactive demos. From raw tokens to autonomous AI agents — built for financial professionals.</p>
+</header>
+
+<!-- LEARNING PATH -->
+<main class="path-wrap">
+  <div class="journey">
+
+    <!-- ════════════════════════════════════
+         LAYER 1 — FOUNDATION
+    ═══════════════════════════════════════ -->
+    <div class="layer l1">
+      <div class="layer-header">
+        <div class="layer-num">01</div>
+        <div class="layer-title">Foundation — Text as Numbers</div>
+      </div>
+      <div class="cards">
+
+        <a href="tokenizer.html" class="card">
+          <div class="card-preview preview-indigo">
+            <div class="preview-token-row">
+              <span class="token-chip token-chip-l1" style="animation-delay:0s">The</span>
+              <span class="token-chip token-chip-l2" style="animation-delay:0.2s">loan</span>
+              <span class="token-chip token-chip-l1" style="animation-delay:0.4s">app</span>
+              <span class="token-chip token-chip-l3" style="animation-delay:0.6s">li</span>
+              <span class="token-chip token-chip-l3" style="animation-delay:0.8s">ca</span>
+              <span class="token-chip token-chip-l4" style="animation-delay:1s">tion</span>
+              <span class="token-chip token-chip-l2" style="animation-delay:1.2s">AM</span>
+              <span class="token-chip token-chip-l1" style="animation-delay:1.4s">L</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="card-step"><span class="step-dot"></span>Step 1 · Interactive</div>
+            <div class="card-title">Tokenizer</div>
+            <div class="card-desc">Type any text and watch it split into tokens — see why "AML" becomes <code class="card-code">AM + L</code>.</div>
+            <div class="card-action">Start here</div>
+          </div>
+        </a>
+
+        <a href="embeddings.html" class="card">
+          <div class="card-preview preview-indigo-v">
+            <svg width="160" height="90" viewBox="0 0 200 110">
+              <circle cx="55" cy="35" r="9" fill="#6366f1" opacity="0.9"/>
+              <circle cx="75" cy="28" r="9" fill="#6366f1" opacity="0.7"/>
+              <circle cx="48" cy="52" r="9" fill="#818cf8" opacity="0.75"/>
+              <circle cx="138" cy="75" r="9" fill="#10b981" opacity="0.9"/>
+              <circle cx="154" cy="65" r="9" fill="#10b981" opacity="0.75"/>
+              <circle cx="100" cy="55" r="7" fill="#f59e0b" opacity="0.85"/>
+              <text x="30" y="33" font-size="7.5" fill="#4338ca" font-family="monospace" font-weight="600">king</text>
+              <text x="56" y="26" font-size="7.5" fill="#4338ca" font-family="monospace" font-weight="600">queen</text>
+              <text x="118" y="73" font-size="7.5" fill="#059669" font-family="monospace" font-weight="600">loan</text>
+              <text x="134" y="63" font-size="7.5" fill="#059669" font-family="monospace" font-weight="600">credit</text>
+              <text x="84" y="53" font-size="7.5" fill="#b45309" font-family="monospace" font-weight="600">bank</text>
+              <ellipse cx="60" cy="42" rx="28" ry="22" fill="none" stroke="#6366f1" stroke-width="1" stroke-dasharray="3,3" opacity="0.4"/>
+              <ellipse cx="144" cy="76" rx="24" ry="20" fill="none" stroke="#10b981" stroke-width="1" stroke-dasharray="3,3" opacity="0.4"/>
+            </svg>
+          </div>
+          <div class="card-body">
+            <div class="card-step"><span class="step-dot"></span>Step 2 · Interactive</div>
+            <div class="card-title">Embedding Space</div>
+            <div class="card-desc">Words become coordinates — drag them and watch meaning form clusters in 2D space.</div>
+            <div class="card-action">Explore vectors</div>
+          </div>
+        </a>
+
+        <a href="cosine.html" class="card">
+          <div class="card-preview preview-indigo-c">
+            <svg width="160" height="90" viewBox="0 0 200 110">
+              <circle cx="100" cy="90" r="60" fill="none" stroke="#c7d2fe" stroke-width="1"/>
+              <circle cx="100" cy="90" r="42" fill="none" stroke="#e0e7ff" stroke-width="1"/>
+              <line x1="100" y1="90" x2="148" y2="32" stroke="#6366f1" stroke-width="2.5" stroke-linecap="round"/>
+              <line x1="100" y1="90" x2="140" y2="30" stroke="#7c3aed" stroke-width="2.5" stroke-linecap="round"/>
+              <line x1="100" y1="90" x2="38" y2="42" stroke="#f43f5e" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+              <polygon points="148,32 140,36 144,28" fill="#6366f1"/>
+              <polygon points="140,30 132,34 136,26" fill="#7c3aed"/>
+              <polygon points="38,42 46,44 40,36" fill="#f43f5e" opacity="0.7"/>
+              <text x="153" y="31" font-size="8" fill="#4338ca" font-family="monospace">loan</text>
+              <text x="8" y="42" font-size="8" fill="#be123c" font-family="monospace">weather</text>
+            </svg>
+          </div>
+          <div class="card-body">
+            <div class="card-step"><span class="step-dot"></span>Step 3 · Interactive</div>
+            <div class="card-title">Cosine Similarity</div>
+            <div class="card-desc">Drag two word-vectors and watch the cosine score update live as the angle between them changes.</div>
+            <div class="card-action">Measure meaning</div>
+          </div>
+        </a>
+
+        <a href="distance-euclidean.html" class="card">
+          <div class="card-preview preview-violet">
+            <svg width="160" height="90" viewBox="0 0 200 110">
+              <line x1="20" y1="95" x2="185" y2="95" stroke="#e2e8f0" stroke-width="1"/>
+              <line x1="20" y1="95" x2="20" y2="15" stroke="#e2e8f0" stroke-width="1"/>
+              <line x1="20" y1="95" x2="68" y2="55" stroke="#7c3aed" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="68" cy="55" r="5" fill="#7c3aed"/>
+              <text x="72" y="54" font-size="7" fill="#5b21b6" font-family="monospace">short doc</text>
+              <line x1="20" y1="95" x2="140" y2="15" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" opacity="0.55"/>
+              <circle cx="140" cy="15" r="5" fill="#7c3aed" opacity="0.55"/>
+              <text x="144" y="14" font-size="7" fill="#5b21b6" font-family="monospace" opacity="0.7">long doc</text>
+              <line x1="68" y1="55" x2="140" y2="15" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,3"/>
+              <text x="90" y="28" font-size="7" fill="#dc2626" font-family="monospace" transform="rotate(-25,90,30)">d=4.24 !</text>
+            </svg>
+          </div>
+          <div class="card-body">
+            <div class="card-step"><span class="step-dot"></span>Step 4 · Interactive</div>
+            <div class="card-title">Euclidean Distance</div>
+            <div class="card-desc">Click word points on a scatter plot and see exactly when Euclidean and Cosine distance disagree.</div>
+            <div class="card-action">Click word points</div>
+          </div>
+        </a>
+
+        <a href="inverted-index.html" class="card">
+          <div class="card-preview preview-emerald">
+            <div class="preview-index">
+              <div><span class="idx-key">"bank"</span> → <span class="idx-doc-a">Doc A</span><span class="idx-doc-b">Doc B</span></div>
+              <div><span class="idx-key">"risk"</span> → <span class="idx-doc-a">Doc A</span><span class="idx-doc-c">Doc C</span></div>
+              <div><span class="idx-key">"loan"</span> → <span class="idx-doc-a">Doc A</span></div>
+              <div><span class="idx-key">"credit"</span> → <span class="idx-doc-a">Doc A</span><span class="idx-doc-c">Doc C</span></div>
+              <div class="idx-miss" style="margin-top:4px">Search: <span class="idx-found">financial institution</span> → ✗</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="card-step"><span class="step-dot"></span>Step 5 · Interactive</div>
+            <div class="card-title">Inverted Index</div>
+            <div class="card-desc">Build a keyword index, search it live, and see why exact-match fails where embeddings succeed.</div>
+            <div class="card-action">Build the index</div>
+          </div>
+        </a>
+
+      </div>
+    </div>
+
+    <!-- ── CONNECTOR 1→2 ── -->
+    <div class="layer-connector">
+      <div class="connector-line">
+        <div class="connector-dot"></div>
+        <div class="connector-arrow">▸</div>
+        <div class="connector-dot"></div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════
+         LAYER 2 — BEHAVIOUR
+    ═══════════════════════════════════════ -->
+    <div class="layer l2">
+      <div class="layer-header">
+        <div class="layer-num">02</div>
+        <div class="layer-title">Behaviour — How Models Think</div>
+      </div>
+      <div class="cards">
+
+        <a href="attention.html" class="card">
+          <div class="card-preview preview-amber">
+            <svg width="160" height="90" viewBox="0 0 220 110">
+              <text x="12" y="28" font-size="10" fill="#9ca3af" font-family="monospace">The</text>
+              <text x="42" y="28" font-size="10" fill="#9ca3af" font-family="monospace">loan</text>
+              <text x="88" y="28" font-size="10" fill="#9ca3af" font-family="monospace">was</text>
+              <text x="124" y="28" font-size="11" fill="#d97706" font-family="monospace" font-weight="bold">its</text>
+              <text x="154" y="28" font-size="10" fill="#9ca3af" font-family="monospace">risk</text>
+              <line x1="133" y1="32" x2="60" y2="88" stroke="#f59e0b" stroke-width="3" opacity="0.95" stroke-linecap="round"/>
+              <line x1="133" y1="32" x2="165" y2="88" stroke="#f59e0b" stroke-width="1.5" opacity="0.4" stroke-linecap="round"/>
+              <line x1="133" y1="32" x2="20" y2="88" stroke="#f59e0b" stroke-width="0.75" opacity="0.15" stroke-linecap="round"/>
+              <circle cx="133" cy="22" r="14" fill="#f59e0b" opacity="0.12"/>
+              <rect x="34" y="90" width="52" height="16" rx="4" fill="#fef3c7" stroke="#fcd34d" stroke-width="1"/>
+              <text x="60" y="102" font-size="8" fill="#b45309" text-anchor="middle" font-family="monospace">loan 0.82 ✓</text>
+              <rect x="137" y="90" width="46" height="16" rx="4" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1"/>
+              <text x="160" y="102" font-size="8" fill="#9ca3af" text-anchor="middle" font-family="monospace">risk 0.43</text>
+            </svg>
+          </div>
+          <div class="card-body">
+            <div class="card-step"><span class="step-dot"></span>Step 6 · Interactive</div>
+            <div class="card-title">Attention Heatmap</div>
+            <div class="card-desc">Click any word and watch the model highlight what it attends to — pronoun resolution made visible.</div>
+            <div class="card-action">Click a word</div>
+          </div>
+        </a>
+
+        <a href="temperature.html" class="card">
+          <div class="card-preview preview-amber-c">
+            <div class="preview-bars">
+              <div class="preview-bar-row">
+                <div class="preview-bar preview-bar-cyan"  style="height:60px"></div>
+                <div class="preview-bar preview-bar-cyan"  style="height:10px;opacity:0.5"></div>
+                <div class="preview-bar preview-bar-cyan"  style="height:4px;opacity:0.25"></div>
+                <div class="preview-bar-spacer"></div>
+                <div class="preview-bar preview-bar-amber" style="height:38px"></div>
+                <div class="preview-bar preview-bar-amber" style="height:28px;opacity:0.75"></div>
+                <div class="preview-bar preview-bar-amber" style="height:20px;opacity:0.55"></div>
+                <div class="preview-bar preview-bar-amber" style="height:13px;opacity:0.4"></div>
+                <div class="preview-bar-spacer"></div>
+                <div class="preview-bar preview-bar-red"   style="height:22px"></div>
+                <div class="preview-bar preview-bar-red"   style="height:18px;opacity:0.8"></div>
+                <div class="preview-bar preview-bar-red"   style="height:16px;opacity:0.65"></div>
+                <div class="preview-bar preview-bar-red"   style="height:14px;opacity:0.5"></div>
+              </div>
+              <div class="preview-bar-labels">
+                <span style="color:var(--color-cyan)">t=0.1</span>
+                <span style="color:var(--color-amber-dark)">t=0.5</span>
+                <span style="color:var(--color-red-dark)">t=1.0</span>
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="card-step"><span class="step-dot"></span>Step 7 · Slider</div>
+            <div class="card-title">Temperature</div>
+            <div class="card-desc">Drag the slider 0→1 and watch token probabilities collapse or spread across candidates.</div>
+            <div class="card-action">Drag the slider</div>
+          </div>
+        </a>
+
+        <a href="hallucination.html" class="card">
+          <div class="card-preview preview-red">
+            <div class="preview-halluc">
+              <div class="halluc-prompt">"Basel III Tier 1 ratio is..."</div>
+              <div class="halluc-bars">
+                <div class="halluc-bar-col">
+                  <div class="halluc-pct">71%</div>
+                  <div class="halluc-bar halluc-bar-chosen"><span class="halluc-label">4.5%</span></div>
+                  <div class="halluc-name chosen-label">CHOSEN</div>
+                </div>
+                <div class="halluc-bar-col">
+                  <div class="halluc-pct">14%</div>
+                  <div class="halluc-bar halluc-bar-b"></div>
+                  <div class="halluc-name">"6%"</div>
+                </div>
+                <div class="halluc-bar-col">
+                  <div class="halluc-pct">9%</div>
+                  <div class="halluc-bar halluc-bar-c"></div>
+                  <div class="halluc-name">"8%"</div>
+                </div>
+              </div>
+              <div class="halluc-warn"><span>⚠</span><span>confident but may be wrong</span></div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="card-step"><span class="step-dot"></span>Step 8 · Interactive</div>
+            <div class="card-title">Hallucination</div>
+            <div class="card-desc">The model picks the most probable token with zero truth-checking — high confidence ≠ correctness.</div>
+            <div class="card-action">Pick a token</div>
+          </div>
+        </a>
+
+      </div>
+    </div>
+
+    <!-- ── CONNECTOR 2→3 ── -->
+    <div class="layer-connector">
+      <div class="connector-line">
+        <div class="connector-dot"></div>
+        <div class="connector-arrow">▸</div>
+        <div class="connector-dot"></div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════
+         LAYER 3 — APPLICATION
+    ═══════════════════════════════════════ -->
+    <div class="layer l3">
+      <div class="layer-header">
+        <div class="layer-num">03</div>
+        <div class="layer-title">Application — Working with LLMs</div>
+      </div>
+      <div class="cards">
+
+        <a href="prompt-builder.html" class="card">
+          <div class="card-preview preview-emerald-g">
+            <div class="preview-prompt">
+              <div class="preview-part part-role"><span>👤 ROLE</span><span class="preview-part-badge badge-role">ON</span></div>
+              <div class="preview-part part-context"><span>🔍 CONTEXT</span><span class="preview-part-badge badge-context">ON</span></div>
+              <div class="preview-part part-task"><span>🎯 TASK</span><span class="preview-part-badge badge-task">ON</span></div>
+              <div class="preview-part part-format"><span>📋 FORMAT</span><span class="preview-part-badge badge-format">ON</span></div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="card-step"><span class="step-dot"></span>Step 9 · Interactive</div>
+            <div class="card-title">Prompt Builder</div>
+            <div class="card-desc">Toggle prompt components on/off and watch the quality score react instantly.</div>
+            <div class="card-action">Build a prompt</div>
+          </div>
+        </a>
+
+        <a href="rag.html" class="card">
+          <div class="card-preview preview-emerald">
+            <svg width="160" height="90" viewBox="0 0 220 110">
+              <rect x="5" y="12" width="44" height="28" rx="7" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+              <text x="27" y="29" font-size="8" fill="#1d4ed8" text-anchor="middle" font-family="monospace" font-weight="600">Docs</text>
+              <rect x="78" y="12" width="58" height="28" rx="7" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+              <text x="107" y="29" font-size="8" fill="#15803d" text-anchor="middle" font-family="monospace" font-weight="600">VectorDB</text>
+              <rect x="165" y="12" width="48" height="28" rx="7" fill="#fef9c3" stroke="#d97706" stroke-width="1.5"/>
+              <text x="189" y="29" font-size="8" fill="#b45309" text-anchor="middle" font-family="monospace" font-weight="600">LLM</text>
+              <line x1="49" y1="26" x2="78" y2="26" stroke="#94a3b8" stroke-width="1.5"/>
+              <line x1="136" y1="26" x2="165" y2="26" stroke="#94a3b8" stroke-width="1.5"/>
+              <text x="107" y="62" font-size="8" fill="#6b7280" text-anchor="middle" font-family="monospace">User Query ↓</text>
+              <line x1="107" y1="66" x2="107" y2="80" stroke="#10b981" stroke-width="1.5"/>
+              <rect x="68" y="80" width="78" height="24" rx="6" fill="#d1fae5" stroke="#10b981" stroke-width="1.5"/>
+              <text x="107" y="95" font-size="8" fill="#065f46" text-anchor="middle" font-family="monospace" font-weight="600">✓ Grounded Answer</text>
+            </svg>
+          </div>
+          <div class="card-body">
+            <div class="card-step"><span class="step-dot"></span>Step 10 · Animated</div>
+            <div class="card-title">RAG Pipeline</div>
+            <div class="card-desc">Watch a query travel through retrieval, embedding search, and grounded generation step by step.</div>
+            <div class="card-action">Run the pipeline</div>
+          </div>
+        </a>
+
+        <a href="react-loop.html" class="card">
+          <div class="card-preview preview-emerald-v">
+            <div class="preview-react">
+              <div class="react-step react-reason"><span>🧠</span><span>Reason: I need the risk scores first</span></div>
+              <div class="react-step react-act"><span>⚡</span><span>Act: score_transactions(47k)</span></div>
+              <div class="react-step react-observe"><span>👁</span><span>Observe: top risk 0.97 → TXN-9923</span></div>
+              <div class="react-step react-reason" style="opacity:0.7"><span>🧠</span><span>Reason: Flag all above 0.85...</span></div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="card-step"><span class="step-dot"></span>Step 11 · Animated</div>
+            <div class="card-title">ReAct Agent Loop</div>
+            <div class="card-desc">Step through an AI agent reasoning, calling tools, and observing results in a fraud detection scenario.</div>
+            <div class="card-action">Watch the agent</div>
+          </div>
+        </a>
+
+      </div>
+    </div>
+
+    <!-- ════ LAYER CONNECTOR ════ -->
+    <div class="layer-connector"><span class="connector-label">▸ Deploy &amp; Scale</span></div>
+
+    <!-- ════════════════════════════════════
+         LAYER 4 — PRODUCTION
+    ═══════════════════════════════════════ -->
+    <div class="layer l4">
+      <div class="layer-header">
+        <div class="layer-num">04</div>
+        <div class="layer-title">Production — Deploying LLMs</div>
+      </div>
+      <div class="cards">
+
+        <a href="chunking.html" class="card">
+          <div class="card-preview preview-cyan">
+            <svg width="160" height="90" viewBox="0 0 200 110">
+              <rect x="10" y="18" width="180" height="16" rx="3" fill="#cffafe" stroke="#0891b2" stroke-width="1"/>
+              <rect x="10" y="18" width="58" height="16" rx="3" fill="#0891b2" opacity="0.9"/>
+              <rect x="10" y="40" width="180" height="16" rx="3" fill="#cffafe" stroke="#0891b2" stroke-width="1"/>
+              <rect x="10" y="40" width="90" height="16" rx="3" fill="#0891b2" opacity="0.7"/>
+              <rect x="10" y="62" width="180" height="16" rx="3" fill="#cffafe" stroke="#0891b2" stroke-width="1"/>
+              <rect x="10" y="62" width="42" height="16" rx="3" fill="#0891b2" opacity="0.5"/>
+              <text x="100" y="95" font-size="8" fill="#0e7490" text-anchor="middle" font-family="monospace">Fixed · Semantic · Hierarchical</text>
+            </svg>
+          </div>
+          <div class="card-body">
+            <div class="card-step"><span class="step-dot"></span>Step 12 · Interactive</div>
+            <div class="card-title">Chunking Strategies</div>
+            <div class="card-desc">Compare 6 chunking approaches side-by-side — see how chunk size and overlap affect retrieval quality.</div>
+            <div class="card-action">Split &amp; compare</div>
+          </div>
+        </a>
+
+        <a href="context-window.html" class="card">
+          <div class="card-preview preview-cyan-v">
+            <svg width="160" height="90" viewBox="0 0 200 110">
+              <rect x="10" y="12" width="180" height="14" rx="3" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="1"/>
+              <rect x="10" y="12" width="126" height="14" rx="3" fill="#0ea5e9" opacity="0.85"/>
+              <text x="14" y="23" font-size="7" fill="white" font-family="monospace">63% used · 5,040 / 8,000 tokens</text>
+              <rect x="10" y="34" width="80" height="18" rx="4" fill="#ede9fe" stroke="#7c3aed" stroke-width="1"/>
+              <text x="50" y="47" font-size="7" fill="#5b21b6" text-anchor="middle" font-family="monospace">System</text>
+              <rect x="98" y="34" width="92" height="18" rx="4" fill="#dbeafe" stroke="#2563eb" stroke-width="1"/>
+              <text x="144" y="47" font-size="7" fill="#1d4ed8" text-anchor="middle" font-family="monospace">Docs (RAG)</text>
+              <rect x="10" y="60" width="82" height="18" rx="4" fill="#dcfce7" stroke="#16a34a" stroke-width="1"/>
+              <text x="51" y="73" font-size="7" fill="#15803d" text-anchor="middle" font-family="monospace">Chat history</text>
+              <rect x="100" y="60" width="90" height="18" rx="4" fill="#fef3c7" stroke="#d97706" stroke-width="1"/>
+              <text x="145" y="73" font-size="7" fill="#92400e" text-anchor="middle" font-family="monospace">User query</text>
+            </svg>
+          </div>
+          <div class="card-body">
+            <div class="card-step"><span class="step-dot"></span>Step 13 · Interactive</div>
+            <div class="card-title">Context Window</div>
+            <div class="card-desc">Fill and overflow a live context window — understand engineering strategies and prompt injection risks.</div>
+            <div class="card-action">Fill the window</div>
+          </div>
+        </a>
+
+        <a href="rag-vs-finetune.html" class="card">
+          <div class="card-preview preview-cyan-c">
+            <svg width="160" height="90" viewBox="0 0 200 110">
+              <rect x="8"  y="14" width="52" height="30" rx="5" fill="#fce7f3" stroke="#db2777" stroke-width="1.5"/>
+              <text x="34" y="33" font-size="7.5" fill="#9d174d" text-anchor="middle" font-family="monospace" font-weight="600">Prompt</text>
+              <rect x="74" y="14" width="52" height="30" rx="5" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+              <text x="100" y="33" font-size="7.5" fill="#15803d" text-anchor="middle" font-family="monospace" font-weight="600">RAG</text>
+              <rect x="140" y="14" width="52" height="30" rx="5" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+              <text x="166" y="33" font-size="7.5" fill="#1d4ed8" text-anchor="middle" font-family="monospace" font-weight="600">Fine-tune</text>
+              <line x1="34"  y1="44" x2="34"  y2="58" stroke="#db2777" stroke-width="1.5"/>
+              <line x1="100" y1="44" x2="100" y2="58" stroke="#16a34a" stroke-width="1.5"/>
+              <line x1="166" y1="44" x2="166" y2="58" stroke="#2563eb" stroke-width="1.5"/>
+              <rect x="8"   y="58" width="52" height="36" rx="5" fill="#fce7f3" stroke="#db2777" stroke-width="1"/>
+              <text x="34"  y="70" font-size="6.5" fill="#9d174d" text-anchor="middle" font-family="monospace">Fast · Cheap</text>
+              <text x="34"  y="82" font-size="6.5" fill="#9d174d" text-anchor="middle" font-family="monospace">Stale data</text>
+              <rect x="74"  y="58" width="52" height="36" rx="5" fill="#dcfce7" stroke="#16a34a" stroke-width="1"/>
+              <text x="100" y="70" font-size="6.5" fill="#15803d" text-anchor="middle" font-family="monospace">Fresh · Audit</text>
+              <text x="100" y="82" font-size="6.5" fill="#15803d" text-anchor="middle" font-family="monospace">Higher cost</text>
+              <rect x="140" y="58" width="52" height="36" rx="5" fill="#dbeafe" stroke="#2563eb" stroke-width="1"/>
+              <text x="166" y="70" font-size="6.5" fill="#1d4ed8" text-anchor="middle" font-family="monospace">Custom tone</text>
+              <text x="166" y="82" font-size="6.5" fill="#1d4ed8" text-anchor="middle" font-family="monospace">Slow · Costly</text>
+            </svg>
+          </div>
+          <div class="card-body">
+            <div class="card-step"><span class="step-dot"></span>Step 14 · Interactive</div>
+            <div class="card-title">Prompt vs RAG vs Fine-Tuning</div>
+            <div class="card-desc">5 real banking scenarios — choose the right approach and see why cost, freshness and auditability matter.</div>
+            <div class="card-action">Pick a strategy</div>
+          </div>
+        </a>
+
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<footer class="foot">
+  <span class="foot-sep">▸</span> &nbsp;
+  Start with <a href="tokenizer.html" class="foot-link">Tokenizer</a> and follow the path — each demo builds on the last.
+</footer>
+
+<script>
+// Animated network background for hero
+(function () {
+  const canvas = document.getElementById('heroCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let W, H, nodes, raf;
+
+  const NODE_COUNT = 32;
+  const MAX_DIST   = 140;
+  const COLORS     = ['#6366f1','#10b981','#f59e0b','#8b5cf6','#ec4899'];
+
+  function resize() {
+    W = canvas.width  = canvas.offsetWidth;
+    H = canvas.height = canvas.offsetHeight;
+  }
+
+  function init() {
+    nodes = Array.from({ length: NODE_COUNT }, () => ({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      vx: (Math.random() - 0.5) * 0.35,
+      vy: (Math.random() - 0.5) * 0.35,
+      r: 2 + Math.random() * 2.5,
+      color: COLORS[Math.floor(Math.random() * COLORS.length)]
+    }));
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    // edges
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const dx = nodes[i].x - nodes[j].x;
+        const dy = nodes[i].y - nodes[j].y;
+        const d  = Math.sqrt(dx * dx + dy * dy);
+        if (d < MAX_DIST) {
+          ctx.beginPath();
+          ctx.moveTo(nodes[i].x, nodes[i].y);
+          ctx.lineTo(nodes[j].x, nodes[j].y);
+          ctx.strokeStyle = `rgba(99,102,241,${0.12 * (1 - d / MAX_DIST)})`;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
+    }
+    // nodes
+    nodes.forEach(n => {
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+      ctx.fillStyle = n.color + '55';
+      ctx.fill();
+    });
+  }
+
+  function tick() {
+    nodes.forEach(n => {
+      n.x += n.vx;
+      n.y += n.vy;
+      if (n.x < 0 || n.x > W) n.vx *= -1;
+      if (n.y < 0 || n.y > H) n.vy *= -1;
+    });
+    draw();
+    raf = requestAnimationFrame(tick);
+  }
+
+  resize();
+  init();
+  tick();
+  window.addEventListener('resize', () => { resize(); init(); });
+})();
+</script>
+
+</body>
+</html>

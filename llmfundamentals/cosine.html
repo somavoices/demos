@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cosine Similarity Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<style>
+:root { --page-accent: #0891b2; }
+body { display:flex; flex-direction:column; }
+
+.main { display:grid; grid-template-columns:1fr 300px; flex:1; min-height:0; }
+.canvas-area { position:relative; background:var(--color-canvas-bg); }
+canvas { width:100%; height:100%; display:block; }
+
+.panel { padding:1.5rem; border-left:1px solid var(--color-border); overflow-y:auto; display:flex; flex-direction:column; gap:1.25rem; background:var(--color-surface); }
+.panel h2 { font-size:1.2rem; font-weight:700; }
+.panel h2 span { color:var(--page-accent); }
+.hint { font-family:var(--font-mono); font-size:0.72rem; color:var(--color-text-secondary); line-height:1.6; }
+.hint b { color:var(--page-accent); }
+
+/* SCORE DISPLAY */
+.score-big {
+  background:var(--color-cyan-light); border:2px solid var(--page-accent);
+  border-radius:14px; padding:1.25rem; text-align:center;
+}
+.score-num { font-size:3.5rem; font-weight:700; font-family:var(--font-mono); line-height:1; transition:color 0.3s; }
+.score-label { font-family:var(--font-mono); font-size:0.65rem; color:var(--color-text-secondary); letter-spacing:2px; margin-top:0.25rem; }
+.score-desc { font-size:0.8rem; margin-top:0.75rem; font-weight:600; transition:color 0.3s; }
+
+/* Angle display */
+.angle-display { font-family:var(--font-mono); font-size:0.85rem; color:var(--color-text-secondary); text-align:center; }
+
+/* WORD SELECTOR */
+.word-btn-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; }
+.wbtn { background:var(--color-surface-alt); border:1px solid var(--color-border); border-radius:8px; padding:6px; font-family:var(--font-mono); font-size:0.75rem; cursor:pointer; transition:all 0.2s; text-align:center; color:var(--color-text-secondary); }
+.wbtn:hover { border-color:var(--color-border-md); }
+.wbtn.sel-a { border-color:var(--page-accent); color:var(--page-accent); background:var(--color-cyan-light); }
+.wbtn.sel-b { border-color:var(--color-violet-deep); color:var(--color-violet-deep); background:var(--color-violet-pale); }
+
+.sel-legend { display:flex; gap:1rem; font-family:var(--font-mono); font-size:0.72rem; }
+.sel-leg { display:flex; align-items:center; gap:0.4rem; }
+.sel-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+/* Examples */
+.examples { display:flex; flex-direction:column; gap:0.4rem; }
+.ex-row { display:flex; align-items:center; gap:0.5rem; padding:0.4rem; border-radius:6px; cursor:pointer; transition:all 0.2s; }
+.ex-row:hover { background:var(--color-surface-alt); }
+.ex-terms { font-family:var(--font-mono); font-size:0.72rem; flex:1; color:var(--color-text-secondary); }
+.ex-score { font-family:var(--font-mono); font-size:0.72rem; font-weight:700; }
+.ex-bar { width:60px; background:var(--color-border-light); border-radius:100px; height:5px; }
+.ex-fill { height:100%; border-radius:100px; background:var(--page-accent); }
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html">← Demos</a>
+  <span class="nav-sep">/</span>
+  <span class="cur">Cosine Similarity</span>
+</nav>
+
+<div class="main">
+  <div class="canvas-area">
+    <canvas id="c"></canvas>
+  </div>
+
+  <div class="panel">
+    <div>
+      <h2>Cosine <span>Similarity</span></h2>
+      <p class="hint" style="margin-top:0.5rem">Angle between vectors = meaning distance. <b>Small angle = similar meaning.</b></p>
+    </div>
+
+    <div class="score-big">
+      <div class="score-num" id="score-num">0.85</div>
+      <div class="score-label">COSINE SIMILARITY</div>
+      <div class="score-desc" id="score-desc">Very similar meaning</div>
+    </div>
+    <div class="angle-display">angle: <span id="angle-val">32°</span></div>
+
+    <div>
+      <div class="sel-legend" style="margin-bottom:0.5rem">
+        <div class="sel-leg"><div class="sel-dot" style="background:#22d3ee"></div>Vector A (drag)</div>
+        <div class="sel-leg"><div class="sel-dot" style="background:#a855f7"></div>Vector B (drag)</div>
+      </div>
+      <div class="word-btn-grid" id="word-btns"></div>
+    </div>
+
+    <div>
+      <div style="font-family:var(--font-mono);font-size:0.65rem;color:var(--color-text-muted);letter-spacing:2px;margin-bottom:0.5rem">QUICK EXAMPLES</div>
+      <div class="examples" id="examples"></div>
+    </div>
+
+    <div style="background:var(--color-surface-alt);border:1px solid var(--color-border);border-radius:8px;padding:1rem;font-family:var(--font-mono);font-size:0.72rem;color:var(--color-text-secondary);line-height:1.6">
+      <b style="color:var(--page-accent)">Why cosine, not distance?</b><br>
+      A long document and a short tweet about "loans" both point in the same direction (same meaning) but differ in magnitude (length). Cosine ignores magnitude — it only measures direction = meaning.
+    </div>
+
+    <div style="background:#f0fdf4;border:1px solid #a7f3d0;border-radius:8px;padding:1rem;font-family:var(--font-mono);font-size:0.72rem;color:#065f46;line-height:1.7">
+      <b style="color:#059669">Cosine Distance (used in RAG)</b><br>
+      When retrieving documents, systems flip similarity into a distance so smaller = closer:<br>
+      <code style="background:#d1fae5;padding:2px 6px;border-radius:4px;font-size:0.78rem">distance = 1 − similarity</code><br><br>
+      A similarity of <b>0.91</b> → distance <b>0.09</b> (very close).<br>
+      A similarity of <b>0.09</b> → distance <b>0.91</b> (far apart).<br>
+      Direction-only — magnitude is still ignored.
+    </div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, cx, cy, radius;
+
+const WORDS = [
+  { word:'loan',     angle:25,  color:'#22d3ee' },
+  { word:'credit',   angle:18,  color:'#22d3ee' },
+  { word:'mortgage', angle:35,  color:'#22d3ee' },
+  { word:'debt',     angle:30,  color:'#22d3ee' },
+  { word:'default',  angle:60,  color:'#f59e0b' },
+  { word:'bank',     angle:55,  color:'#f59e0b' },
+  { word:'fraud',    angle:80,  color:'#f59e0b' },
+  { word:'sunset',   angle:140, color:'#f43f5e' },
+  { word:'music',    angle:160, color:'#f43f5e' },
+  { word:'weather',  angle:130, color:'#f43f5e' },
+  { word:'king',     angle:200, color:'#818cf8' },
+  { word:'queen',    angle:208, color:'#818cf8' },
+];
+
+let vecA = { angle:-30, color:'#0891b2', label:'loan' };
+let vecB = { angle:10,  color:'#7c3aed', label:'credit' };
+let dragging = null;
+let selectMode = 'A'; // which vector button presses assign to
+
+const EXAMPLES = [
+  { a:'loan', b:'credit facility', sim:0.91, color:'#22d3ee' },
+  { a:'fraud', b:'suspicious activity', sim:0.87, color:'#34d399' },
+  { a:'loan', b:'bank transfer', sim:0.74, color:'#f59e0b' },
+  { a:'mortgage', b:'home loan', sim:0.89, color:'#22d3ee' },
+  { a:'loan', b:'weather forecast', sim:0.09, color:'#ef4444' },
+];
+
+function resize() {
+  const wrap = canvas.parentElement;
+  const dpr = window.devicePixelRatio || 1;
+  W = wrap.clientWidth;
+  H = wrap.clientHeight;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  cx = W/2; cy = H/2;
+  radius = Math.min(W, H) * 0.35;
+  draw();
+}
+
+function degToRad(d) { return d * Math.PI / 180; }
+function radToDeg(r) { return r * 180 / Math.PI; }
+
+function vecPoint(angleDeg, r) {
+  const rad = degToRad(angleDeg);
+  return { x: cx + Math.cos(rad)*r, y: cy + Math.sin(rad)*r };
+}
+
+function computeSimilarity() {
+  const da = degToRad(vecA.angle);
+  const db = degToRad(vecB.angle);
+  const dot = Math.cos(da)*Math.cos(db) + Math.sin(da)*Math.sin(db);
+  return Math.max(-1, Math.min(1, dot));
+}
+
+function draw() {
+  ctx.clearRect(0,0,W,H);
+
+  // BG circles
+  ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+  ctx.lineWidth = 1;
+  [0.3,0.6,1].forEach(f => {
+    ctx.beginPath(); ctx.arc(cx,cy,radius*f,0,Math.PI*2); ctx.stroke();
+  });
+
+  // Axes
+  ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+  ctx.beginPath(); ctx.moveTo(cx-radius*1.1,cy); ctx.lineTo(cx+radius*1.1,cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx,cy-radius*1.1); ctx.lineTo(cx,cy+radius*1.1); ctx.stroke();
+
+  const sim = computeSimilarity();
+  const angleDiff = Math.abs(vecA.angle - vecB.angle) % 360;
+  const minAngle = Math.min(angleDiff, 360-angleDiff);
+
+  // Arc between vectors (angle)
+  const da = degToRad(vecA.angle);
+  const db = degToRad(vecB.angle);
+  let startA = Math.min(da, db);
+  let endA = Math.max(da, db);
+  if (endA - startA > Math.PI) { const tmp=startA; startA=endA; endA=tmp+2*Math.PI; }
+  const arcColor = sim > 0.7 ? '#22d3ee' : sim > 0.3 ? '#f59e0b' : '#ef4444';
+  ctx.strokeStyle = arcColor + '60';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.arc(cx,cy,radius*0.25,startA,endA); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Angle label
+  const midA = (startA+endA)/2;
+  const lx = cx + Math.cos(midA)*radius*0.18;
+  const ly = cy + Math.sin(midA)*radius*0.18;
+  ctx.fillStyle = arcColor;
+  ctx.font = '11px Fira Code, monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(Math.round(minAngle)+'°', lx, ly+4);
+
+  // Vectors
+  drawVector(vecA, radius);
+  drawVector(vecB, radius);
+
+  // Origin dot
+  const grd = ctx.createRadialGradient(cx,cy,0,cx,cy,8);
+  grd.addColorStop(0,'rgba(0,0,0,0.3)');
+  grd.addColorStop(1,'transparent');
+  ctx.fillStyle = grd;
+  ctx.beginPath(); ctx.arc(cx,cy,8,0,Math.PI*2); ctx.fill();
+}
+
+function drawVector(vec, len) {
+  const rad = degToRad(vec.angle);
+  const ex = cx + Math.cos(rad)*len;
+  const ey = cy + Math.sin(rad)*len;
+
+  // Shadow/glow
+  ctx.strokeStyle = vec.color + '30';
+  ctx.lineWidth = 12;
+  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(ex,ey); ctx.stroke();
+
+  // Main line
+  ctx.strokeStyle = vec.color;
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(ex,ey); ctx.stroke();
+
+  // Arrowhead
+  const arrowLen = 14;
+  const arrowAngle = 0.45;
+  ctx.fillStyle = vec.color;
+  ctx.beginPath();
+  ctx.moveTo(ex, ey);
+  ctx.lineTo(ex - arrowLen*Math.cos(rad-arrowAngle), ey - arrowLen*Math.sin(rad-arrowAngle));
+  ctx.lineTo(ex - arrowLen*Math.cos(rad+arrowAngle), ey - arrowLen*Math.sin(rad+arrowAngle));
+  ctx.closePath(); ctx.fill();
+
+  // Label
+  const lx = cx + Math.cos(rad)*(len+24);
+  const ly = cy + Math.sin(rad)*(len+24);
+  ctx.font = 'bold 13px Fira Code, monospace';
+  ctx.fillStyle = vec.color;
+  ctx.textAlign = 'center';
+  ctx.fillText(vec.label, lx, ly+4);
+}
+
+function updateScore() {
+  const sim = computeSimilarity();
+  const angle = Math.abs(vecA.angle - vecB.angle) % 360;
+  const minAngle = Math.min(angle, 360-angle);
+
+  const numEl = document.getElementById('score-num');
+  const descEl = document.getElementById('score-desc');
+  const angleEl = document.getElementById('angle-val');
+
+  numEl.textContent = sim.toFixed(2);
+  angleEl.textContent = Math.round(minAngle) + '°';
+
+  let desc, col;
+  if (sim > 0.85) { desc='Virtually identical meaning'; col='#0891b2'; }
+  else if (sim > 0.7) { desc='Very similar meaning'; col='#059669'; }
+  else if (sim > 0.5) { desc='Related concepts'; col='#f59e0b'; }
+  else if (sim > 0.2) { desc='Weakly related'; col='#f97316'; }
+  else { desc='Unrelated / different domain'; col='#ef4444'; }
+
+  numEl.style.color = col;
+  descEl.textContent = desc;
+  descEl.style.color = col;
+}
+
+// Mouse/drag
+function getAngle(mx, my) {
+  return radToDeg(Math.atan2(my-cy, mx-cx));
+}
+
+function nearVec(mx, my, vec) {
+  const rad = degToRad(vec.angle);
+  const ex = cx + Math.cos(rad)*radius;
+  const ey = cy + Math.sin(rad)*radius;
+  return Math.sqrt((mx-ex)**2+(my-ey)**2) < 24;
+}
+
+canvas.addEventListener('mousedown', e => {
+  const r = canvas.getBoundingClientRect();
+  const mx = (e.clientX-r.left)*(W/r.width), my = (e.clientY-r.top)*(H/r.height);
+  if (nearVec(mx,my,vecA)) dragging='A';
+  else if (nearVec(mx,my,vecB)) dragging='B';
+});
+canvas.addEventListener('mousemove', e => {
+  const r = canvas.getBoundingClientRect();
+  const mx = (e.clientX-r.left)*(W/r.width), my = (e.clientY-r.top)*(H/r.height);
+  if (dragging) {
+    const v = dragging==='A'?vecA:vecB;
+    v.angle = getAngle(mx,my);
+    v.label = dragging==='A'?'A':'B';
+    draw(); updateScore();
+  }
+  canvas.style.cursor = (nearVec(mx,my,vecA)||nearVec(mx,my,vecB)) ? 'grab' : 'default';
+});
+canvas.addEventListener('mouseup', ()=>{ dragging=null; });
+
+// Touch
+canvas.addEventListener('touchstart', e=>{ e.preventDefault(); const t=e.touches[0]; const r=canvas.getBoundingClientRect(); const mx=(t.clientX-r.left)*(W/r.width),my=(t.clientY-r.top)*(H/r.height); if(nearVec(mx,my,vecA))dragging='A'; else if(nearVec(mx,my,vecB))dragging='B'; },{passive:false});
+canvas.addEventListener('touchmove', e=>{ e.preventDefault(); if(!dragging)return; const t=e.touches[0]; const r=canvas.getBoundingClientRect(); const mx=(t.clientX-r.left)*(W/r.width),my=(t.clientY-r.top)*(H/r.height); const v=dragging==='A'?vecA:vecB; v.angle=getAngle(mx,my); draw(); updateScore(); },{passive:false});
+canvas.addEventListener('touchend',()=>{dragging=null;});
+
+// Word buttons
+function buildWordBtns() {
+  const grid = document.getElementById('word-btns');
+  grid.innerHTML = `<div style="grid-column:1/-1;font-family:'Fira Code',monospace;font-size:0.62rem;color:#9ca3af;letter-spacing:1px;margin-bottom:2px">Assign word to A or B:</div>
+  <button onclick="setMode('A')" id="modeA" style="background:#ecfeff;border:1px solid #0891b2;border-radius:6px;padding:5px;font-family:'Fira Code',monospace;font-size:0.72rem;color:#0891b2;cursor:pointer">Set → A</button>
+  <button onclick="setMode('B')" id="modeB" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:5px;font-family:'Fira Code',monospace;font-size:0.72rem;color:#6b7280;cursor:pointer">Set → B</button>
+  ${WORDS.map(w=>`<div class="wbtn" onclick="assignWord('${w.word}',${w.angle},'${w.color}')">${w.word}</div>`).join('')}`;
+}
+
+let mode = 'A';
+function setMode(m) {
+  mode = m;
+  document.getElementById('modeA').style.background = m==='A'?'#ecfeff':'#f9fafb';
+  document.getElementById('modeA').style.borderColor = m==='A'?'#0891b2':'#e5e7eb';
+  document.getElementById('modeA').style.color = m==='A'?'#0891b2':'#6b7280';
+  document.getElementById('modeB').style.background = m==='B'?'#f5f3ff':'#f9fafb';
+  document.getElementById('modeB').style.borderColor = m==='B'?'#7c3aed':'#e5e7eb';
+  document.getElementById('modeB').style.color = m==='B'?'#7c3aed':'#6b7280';
+}
+
+function assignWord(word, angle, color) {
+  const vec = mode==='A'?vecA:vecB;
+  vec.angle = angle; vec.label = word;
+  if (mode==='A') vec.color = '#0891b2'; else vec.color = '#7c3aed';
+  draw(); updateScore();
+  // Update button highlight
+  document.querySelectorAll('.wbtn').forEach(el=>{ el.classList.remove('sel-a','sel-b'); });
+  event.currentTarget.classList.add(mode==='A'?'sel-a':'sel-b');
+}
+
+// Examples
+function buildExamples() {
+  document.getElementById('examples').innerHTML = EXAMPLES.map(e=>`
+    <div class="ex-row" onclick="loadExample('${e.a}','${e.b}',${e.sim})">
+      <div class="ex-terms">"${e.a}" ↔ "${e.b}"</div>
+      <div class="ex-bar"><div class="ex-fill" style="width:${e.sim*100}%;background:${e.color}"></div></div>
+      <div class="ex-score" style="color:${e.color}">${e.sim}</div>
+    </div>
+  `).join('');
+}
+
+const WORD_ANGLES = {};
+WORDS.forEach(w=>WORD_ANGLES[w.word]=w.angle);
+
+function loadExample(a, b, sim) {
+  const aAngle = WORD_ANGLES[a] ?? -30;
+  const bDiff = Math.acos(Math.max(-1,Math.min(1,sim)));
+  vecA = { angle:aAngle, color:'#0891b2', label:a };
+  vecB = { angle:aAngle + radToDeg(bDiff), color:'#7c3aed', label:b };
+  draw(); updateScore();
+}
+
+function radToDeg(r){return r*180/Math.PI;}
+
+window.addEventListener('resize', resize);
+resize();
+buildWordBtns();
+buildExamples();
+setMode('A');
+updateScore();
+</script>
+</body>
+</html>
