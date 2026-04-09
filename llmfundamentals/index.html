@@ -20,29 +20,31 @@ body { background: var(--color-bg-index); color: var(--color-text-index); overfl
     <div class="prog-div"></div>
     <a href="embeddings.html"       class="prog-dot l1d" title="2 · Embeddings">2</a>
     <div class="prog-div"></div>
-    <a href="cosine.html"           class="prog-dot l1d" title="3 · Cosine Sim">3</a>
+    <a href="token-to-embedding.html" class="prog-dot l1d" title="3 · Token→Embedding→Dims">3</a>
     <div class="prog-div"></div>
-    <a href="distance-euclidean.html" class="prog-dot l1d" title="4 · Euclidean">4</a>
+    <a href="cosine.html"           class="prog-dot l1d" title="4 · Cosine Sim">4</a>
     <div class="prog-div"></div>
-    <a href="inverted-index.html"   class="prog-dot l1d" title="5 · Inverted Index">5</a>
+    <a href="distance-euclidean.html" class="prog-dot l1d" title="5 · Euclidean">5</a>
+    <div class="prog-div"></div>
+    <a href="inverted-index.html"   class="prog-dot l1d" title="6 · Inverted Index">6</a>
     <div class="prog-div-arrow">▸</div>
-    <a href="attention.html"        class="prog-dot l2d" title="6 · Attention">6</a>
+    <a href="attention.html"        class="prog-dot l2d" title="7 · Attention">7</a>
     <div class="prog-div"></div>
-    <a href="temperature.html"      class="prog-dot l2d" title="7 · Temperature">7</a>
+    <a href="temperature.html"      class="prog-dot l2d" title="8 · Temperature">8</a>
     <div class="prog-div"></div>
-    <a href="hallucination.html"    class="prog-dot l2d" title="8 · Hallucination">8</a>
+    <a href="hallucination.html"    class="prog-dot l2d" title="9 · Hallucination">9</a>
     <div class="prog-div-arrow">▸</div>
-    <a href="prompt-builder.html"   class="prog-dot l3d" title="9 · Prompting">9</a>
+    <a href="prompt-builder.html"   class="prog-dot l3d" title="10 · Prompting">10</a>
     <div class="prog-div"></div>
-    <a href="rag.html"              class="prog-dot l3d" title="10 · RAG">10</a>
+    <a href="rag.html"              class="prog-dot l3d" title="11 · RAG">11</a>
     <div class="prog-div"></div>
-    <a href="react-loop.html"       class="prog-dot l3d" title="11 · ReAct">11</a>
+    <a href="react-loop.html"       class="prog-dot l3d" title="12 · ReAct">12</a>
     <div class="prog-div-arrow">▸</div>
-    <a href="chunking.html"         class="prog-dot l4d" title="12 · Chunking">12</a>
+    <a href="chunking.html"         class="prog-dot l4d" title="13 · Chunking">13</a>
     <div class="prog-div"></div>
-    <a href="context-window.html"   class="prog-dot l4d" title="13 · Context Window">13</a>
+    <a href="context-window.html"   class="prog-dot l4d" title="14 · Context Window">14</a>
     <div class="prog-div"></div>
-    <a href="rag-vs-finetune.html"  class="prog-dot l4d" title="14 · Prompt vs RAG vs Fine-Tuning">14</a>
+    <a href="rag-vs-finetune.html"  class="prog-dot l4d" title="15 · Prompt vs RAG vs Fine-Tuning">15</a>
   </div>
 </nav>
 
@@ -52,7 +54,7 @@ body { background: var(--color-bg-index); color: var(--color-text-index); overfl
   <canvas class="hero-canvas" id="heroCanvas"></canvas>
   <div class="hero-badge">LLM VISUAL LEARNING LAB</div>
   <h1>Understand LLMs<br><em>by doing, not reading</em></h1>
-  <p class="hero-sub">14 interactive demos. From raw tokens to autonomous AI agents — built for financial professionals.</p>
+  <p class="hero-sub">15 interactive demos. From raw tokens to autonomous AI agents — built for financial professionals.</p>
 </header>
 
 <!-- LEARNING PATH -->
@@ -116,6 +118,53 @@ body { background: var(--color-bg-index); color: var(--color-text-index); overfl
           </div>
         </a>
 
+        <a href="token-to-embedding.html" class="card">
+          <div class="card-preview preview-indigo-f">
+            <svg width="160" height="90" viewBox="0 0 200 110">
+              <!-- token chip -->
+              <rect x="10" y="12" width="44" height="18" rx="4" fill="#ede9fe" stroke="#7c3aed" stroke-width="1"/>
+              <text x="32" y="24" font-size="7.5" fill="#5b21b6" font-family="monospace" text-anchor="middle" font-weight="600">loan</text>
+              <!-- arrow 1 -->
+              <text x="60" y="24" font-size="9" fill="#9ca3af" font-family="monospace">→</text>
+              <!-- id badge -->
+              <rect x="72" y="12" width="38" height="18" rx="4" fill="#f3f4f6" stroke="#d1d5db" stroke-width="1"/>
+              <text x="91" y="24" font-size="7" fill="#6b7280" font-family="monospace" text-anchor="middle">#28289</text>
+              <!-- arrow 2 -->
+              <text x="116" y="24" font-size="9" fill="#9ca3af" font-family="monospace">→</text>
+              <!-- vector mini bars -->
+              <rect x="130" y="8" width="58" height="26" rx="3" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="1"/>
+              <rect x="134" y="20" width="3" height="10" rx="1" fill="#7c3aed" opacity="0.9"/>
+              <rect x="139" y="16" width="3" height="14" rx="1" fill="#7c3aed" opacity="0.75"/>
+              <rect x="144" y="22" width="3" height="8" rx="1" fill="#10b981" opacity="0.8"/>
+              <rect x="149" y="14" width="3" height="16" rx="1" fill="#7c3aed" opacity="0.6"/>
+              <rect x="154" y="19" width="3" height="11" rx="1" fill="#ef4444" opacity="0.7"/>
+              <rect x="159" y="24" width="3" height="6" rx="1" fill="#10b981" opacity="0.65"/>
+              <rect x="164" y="17" width="3" height="13" rx="1" fill="#7c3aed" opacity="0.8"/>
+              <rect x="169" y="21" width="3" height="9" rx="1" fill="#ef4444" opacity="0.6"/>
+              <text x="158" y="42" font-size="6.5" fill="#6d28d9" font-family="monospace" text-anchor="middle">32 dims</text>
+              <!-- dim compare below -->
+              <text x="20" y="58" font-size="6" fill="#9ca3af" font-family="monospace">dim-00</text>
+              <rect x="52" y="53" width="60" height="5" rx="2" fill="#ede9fe"/>
+              <rect x="52" y="53" width="46" height="5" rx="2" fill="#7c3aed" opacity="0.7"/>
+              <text x="116" y="58" font-size="6" fill="#059669" font-family="monospace">0.71</text>
+              <text x="20" y="70" font-size="6" fill="#9ca3af" font-family="monospace">dim-03</text>
+              <rect x="52" y="65" width="60" height="5" rx="2" fill="#ede9fe"/>
+              <rect x="52" y="65" width="30" height="5" rx="2" fill="#ef4444" opacity="0.6"/>
+              <text x="116" y="70" font-size="6" fill="#dc2626" font-family="monospace">-0.43</text>
+              <text x="20" y="82" font-size="6" fill="#9ca3af" font-family="monospace">dim-12</text>
+              <rect x="52" y="77" width="60" height="5" rx="2" fill="#ede9fe"/>
+              <rect x="52" y="77" width="52" height="5" rx="2" fill="#7c3aed" opacity="0.8"/>
+              <text x="116" y="82" font-size="6" fill="#059669" font-family="monospace">0.82</text>
+            </svg>
+          </div>
+          <div class="card-body">
+            <div class="card-step"><span class="step-dot"></span>Step 3 · Interactive</div>
+            <div class="card-title">Token → Embedding → Dimensions</div>
+            <div class="card-desc">See how a token ID becomes a float vector — inspect each dimension and compare two words side-by-side.</div>
+            <div class="card-action">Inspect vectors</div>
+          </div>
+        </a>
+
         <a href="cosine.html" class="card">
           <div class="card-preview preview-indigo-c">
             <svg width="160" height="90" viewBox="0 0 200 110">
@@ -132,7 +181,7 @@ body { background: var(--color-bg-index); color: var(--color-text-index); overfl
             </svg>
           </div>
           <div class="card-body">
-            <div class="card-step"><span class="step-dot"></span>Step 3 · Interactive</div>
+            <div class="card-step"><span class="step-dot"></span>Step 4 · Interactive</div>
             <div class="card-title">Cosine Similarity</div>
             <div class="card-desc">Drag two word-vectors and watch the cosine score update live as the angle between them changes.</div>
             <div class="card-action">Measure meaning</div>
@@ -155,7 +204,7 @@ body { background: var(--color-bg-index); color: var(--color-text-index); overfl
             </svg>
           </div>
           <div class="card-body">
-            <div class="card-step"><span class="step-dot"></span>Step 4 · Interactive</div>
+            <div class="card-step"><span class="step-dot"></span>Step 5 · Interactive</div>
             <div class="card-title">Euclidean Distance</div>
             <div class="card-desc">Click word points on a scatter plot and see exactly when Euclidean and Cosine distance disagree.</div>
             <div class="card-action">Click word points</div>
@@ -173,7 +222,7 @@ body { background: var(--color-bg-index); color: var(--color-text-index); overfl
             </div>
           </div>
           <div class="card-body">
-            <div class="card-step"><span class="step-dot"></span>Step 5 · Interactive</div>
+            <div class="card-step"><span class="step-dot"></span>Step 6 · Interactive</div>
             <div class="card-title">Inverted Index</div>
             <div class="card-desc">Build a keyword index, search it live, and see why exact-match fails where embeddings succeed.</div>
             <div class="card-action">Build the index</div>
@@ -221,7 +270,7 @@ body { background: var(--color-bg-index); color: var(--color-text-index); overfl
             </svg>
           </div>
           <div class="card-body">
-            <div class="card-step"><span class="step-dot"></span>Step 6 · Interactive</div>
+            <div class="card-step"><span class="step-dot"></span>Step 7 · Interactive</div>
             <div class="card-title">Attention Heatmap</div>
             <div class="card-desc">Click any word and watch the model highlight what it attends to — pronoun resolution made visible.</div>
             <div class="card-action">Click a word</div>
@@ -254,7 +303,7 @@ body { background: var(--color-bg-index); color: var(--color-text-index); overfl
             </div>
           </div>
           <div class="card-body">
-            <div class="card-step"><span class="step-dot"></span>Step 7 · Slider</div>
+            <div class="card-step"><span class="step-dot"></span>Step 8 · Slider</div>
             <div class="card-title">Temperature</div>
             <div class="card-desc">Drag the slider 0→1 and watch token probabilities collapse or spread across candidates.</div>
             <div class="card-action">Drag the slider</div>
@@ -286,7 +335,7 @@ body { background: var(--color-bg-index); color: var(--color-text-index); overfl
             </div>
           </div>
           <div class="card-body">
-            <div class="card-step"><span class="step-dot"></span>Step 8 · Interactive</div>
+            <div class="card-step"><span class="step-dot"></span>Step 9 · Interactive</div>
             <div class="card-title">Hallucination</div>
             <div class="card-desc">The model picks the most probable token with zero truth-checking — high confidence ≠ correctness.</div>
             <div class="card-action">Pick a token</div>
@@ -325,7 +374,7 @@ body { background: var(--color-bg-index); color: var(--color-text-index); overfl
             </div>
           </div>
           <div class="card-body">
-            <div class="card-step"><span class="step-dot"></span>Step 9 · Interactive</div>
+            <div class="card-step"><span class="step-dot"></span>Step 10 · Interactive</div>
             <div class="card-title">Prompt Builder</div>
             <div class="card-desc">Toggle prompt components on/off and watch the quality score react instantly.</div>
             <div class="card-action">Build a prompt</div>
@@ -350,7 +399,7 @@ body { background: var(--color-bg-index); color: var(--color-text-index); overfl
             </svg>
           </div>
           <div class="card-body">
-            <div class="card-step"><span class="step-dot"></span>Step 10 · Animated</div>
+            <div class="card-step"><span class="step-dot"></span>Step 11 · Animated</div>
             <div class="card-title">RAG Pipeline</div>
             <div class="card-desc">Watch a query travel through retrieval, embedding search, and grounded generation step by step.</div>
             <div class="card-action">Run the pipeline</div>
@@ -367,7 +416,7 @@ body { background: var(--color-bg-index); color: var(--color-text-index); overfl
             </div>
           </div>
           <div class="card-body">
-            <div class="card-step"><span class="step-dot"></span>Step 11 · Animated</div>
+            <div class="card-step"><span class="step-dot"></span>Step 12 · Animated</div>
             <div class="card-title">ReAct Agent Loop</div>
             <div class="card-desc">Step through an AI agent reasoning, calling tools, and observing results in a fraud detection scenario.</div>
             <div class="card-action">Watch the agent</div>
@@ -403,7 +452,7 @@ body { background: var(--color-bg-index); color: var(--color-text-index); overfl
             </svg>
           </div>
           <div class="card-body">
-            <div class="card-step"><span class="step-dot"></span>Step 12 · Interactive</div>
+            <div class="card-step"><span class="step-dot"></span>Step 13 · Interactive</div>
             <div class="card-title">Chunking Strategies</div>
             <div class="card-desc">Compare 6 chunking approaches side-by-side — see how chunk size and overlap affect retrieval quality.</div>
             <div class="card-action">Split &amp; compare</div>
@@ -427,7 +476,7 @@ body { background: var(--color-bg-index); color: var(--color-text-index); overfl
             </svg>
           </div>
           <div class="card-body">
-            <div class="card-step"><span class="step-dot"></span>Step 13 · Interactive</div>
+            <div class="card-step"><span class="step-dot"></span>Step 14 · Interactive</div>
             <div class="card-title">Context Window</div>
             <div class="card-desc">Fill and overflow a live context window — understand engineering strategies and prompt injection risks.</div>
             <div class="card-action">Fill the window</div>
@@ -458,7 +507,7 @@ body { background: var(--color-bg-index); color: var(--color-text-index); overfl
             </svg>
           </div>
           <div class="card-body">
-            <div class="card-step"><span class="step-dot"></span>Step 14 · Interactive</div>
+            <div class="card-step"><span class="step-dot"></span>Step 15 · Interactive</div>
             <div class="card-title">Prompt vs RAG vs Fine-Tuning</div>
             <div class="card-desc">5 real banking scenarios — choose the right approach and see why cost, freshness and auditability matter.</div>
             <div class="card-action">Pick a strategy</div>

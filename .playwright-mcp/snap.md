@@ -1,0 +1,74 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - link "← Demos" [ref=e3] [cursor=pointer]:
+      - /url: index.html
+    - generic [ref=e4]: /
+    - generic [ref=e5]: Token → Embedding → Dimensions
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - heading "Token → Embedding → Dimensions" [level=1] [ref=e8]
+      - generic [ref=e9]: Click any token to inspect its vector
+    - generic [ref=e10]:
+      - generic [ref=e11]:
+        - generic [ref=e12]:
+          - generic [ref=e13]: Input text
+          - textbox "Type any phrase…" [ref=e14]: The loan default risk is high
+        - generic [ref=e15]:
+          - generic [ref=e16]: Tokens (6)
+          - generic [ref=e17]:
+            - generic [ref=e18] [cursor=pointer]
+            - generic [ref=e23] [cursor=pointer]
+            - generic [ref=e28] [cursor=pointer]
+            - generic [ref=e33] [cursor=pointer]
+            - generic [ref=e38] [cursor=pointer]
+            - generic [ref=e43] [cursor=pointer]
+      - generic [ref=e48]:
+        - generic [ref=e49]:
+          - button "① Lookup Table" [ref=e50] [cursor=pointer]
+          - button "② Vector Numbers" [ref=e51] [cursor=pointer]
+          - button "③ Compare Words" [ref=e52] [cursor=pointer]
+        - generic [ref=e54]:
+          - generic [ref=e55]: Every model has an embedding matrix — a giant table with one row per token ID. When the model sees token "The" (ID 464), it reads row 464 from this table and gets back a vector of floats — one number per dimension. Click a token on the left to highlight its row.
+          - generic [ref=e56]:
+            - generic [ref=e57]
+            - generic [ref=e60]
+          - generic [ref=e583]: "Real models: GPT-2 uses 768 dims · GPT-3 uses 12,288 dims · Claude / GPT-4 class models use ~8,000–12,000+ dims. This demo uses 32 dimensions with plausible semantic structure for clarity."
+      - generic [ref=e584]:
+        - generic [ref=e585]: How it works
+        - generic [ref=e586]:
+          - generic [ref=e587]:
+            - generic [ref=e588]: ✏️
+            - text: Text typed
+          - generic [ref=e589]: ↓
+          - generic [ref=e590]:
+            - generic [ref=e591]: ✂️
+            - text: Tokenized → IDs
+          - generic [ref=e592]: ↓
+          - generic [ref=e593]:
+            - generic [ref=e594]: 📋
+            - text: Matrix row lookup
+          - generic [ref=e595]: ↓
+          - generic [ref=e596]:
+            - generic [ref=e597]: 📊
+            - text: 32-dim float vector
+          - generic [ref=e598]: ↓
+          - generic [ref=e599]:
+            - generic [ref=e600]: 🔢
+            - text: Attention layers use it
+        - generic [ref=e601]:
+          - heading "Why floats, not integers?" [level=4] [ref=e602]: Why floats, not integers?
+          - paragraph [ref=e604]:
+            - text: Token IDs are integers (like
+            - code [ref=e605]: "1234"
+            - text: ), but the model can't do math with them directly —
+            - code [ref=e606]: 1234 + 1 = 1235
+            - text: is meaningless. Embeddings convert each ID into a dense float vector the network can do linear algebra on.
+        - generic [ref=e607]:
+          - heading "What do dimensions encode?" [level=4] [ref=e608]: What do dimensions encode?
+          - paragraph [ref=e610]: "Dimensions are not hand-labelled features. They emerge from training. Roughly: some encode syntax (noun vs verb), others encode sentiment, domain (finance vs medicine), tense, formality. No single dimension = one concept."
+        - generic [ref=e611]:
+          - heading "Same word, different context?" [level=4] [ref=e612]: Same word, different context?
+          - paragraph [ref=e614]: These are static embeddings (one vector per token regardless of context). Transformer attention layers then blend them based on surrounding tokens — so "bank" (river) vs "bank" (finance) get different final representations.
+        - generic [ref=e615]:
+          - heading "Similarity = shared dimensions" [level=4] [ref=e616]: Similarity = shared dimensions
+          - paragraph [ref=e618]: When two words share high values in similar dimensions, cosine similarity is high. The Compare tab shows this dimension-by-dimension — look for bars that move together.

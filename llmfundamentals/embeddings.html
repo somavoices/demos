@@ -534,5 +534,616 @@ window.addEventListener('resize', resize);
 resize();
 updateList();
 </script>
+
+<!-- ══════════════════════════════════════════════════════════════
+     FROM 2D TO HIGH-DIMENSIONAL — new section
+     ══════════════════════════════════════════════════════════════ -->
+
+<style>
+/* ── Section shell ── */
+.dim-section {
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+  padding: 2rem 2rem 3rem;
+}
+.dim-section-inner { max-width: 960px; margin: 0 auto; }
+
+.dim-h1 { font-size: 1.15rem; font-weight: 700; color: var(--color-text-primary); letter-spacing: -0.01em; }
+.dim-sub { font-family: var(--font-mono); font-size: 0.75rem; color: var(--color-text-muted); margin-top: 0.25rem; }
+
+/* ── Step tabs ── */
+.step-tabs { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 1.5rem 0 1rem; }
+.step-tab {
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-md); padding: 5px 16px;
+  font-family: var(--font-mono); font-size: 0.72rem;
+  color: var(--color-text-secondary); cursor: pointer; transition: all 0.15s;
+}
+.step-tab:hover { border-color: var(--color-indigo); color: var(--color-indigo); }
+.step-tab.active { background: var(--color-indigo-light); border-color: var(--color-indigo); color: var(--color-indigo-dark); font-weight: 600; }
+
+/* ── Step panel ── */
+.step-panel { display: none; }
+.step-panel.visible { display: block; }
+
+/* ── 2-col layout ── */
+.dim-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;
+  align-items: start;
+}
+@media (max-width: 680px) { .dim-grid { grid-template-columns: 1fr; } }
+
+/* ── Canvas boxes ── */
+.dim-canvas-box {
+  background: var(--color-canvas-bg); border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl); overflow: hidden; position: relative;
+}
+.dim-canvas-box canvas { display: block; width: 100%; }
+.dim-canvas-label {
+  font-family: var(--font-mono); font-size: 0.65rem; color: var(--color-text-muted);
+  text-align: center; padding: 0.4rem 0; border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+/* ── Prose box ── */
+.dim-prose {
+  background: var(--color-surface-alt); border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl); padding: 1.25rem 1.5rem;
+  font-size: 0.88rem; line-height: 1.7; color: var(--color-text-secondary);
+}
+.dim-prose h3 { font-size: 0.9rem; font-weight: 700; color: var(--color-text-primary); margin-bottom: 0.6rem; }
+.dim-prose b  { color: var(--color-text-primary); }
+.dim-prose code {
+  font-family: var(--font-mono); font-size: 0.78rem;
+  background: var(--color-indigo-light); color: var(--color-indigo-dark);
+  border-radius: 4px; padding: 1px 5px;
+}
+
+/* ── Vector display (scrollable row of bars) ── */
+.vec-display {
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl); padding: 1rem 1.25rem; margin-top: 1rem;
+}
+.vec-display-title {
+  font-family: var(--font-mono); font-size: 0.65rem; color: var(--color-text-muted);
+  letter-spacing: 1.5px; margin-bottom: 0.75rem;
+}
+.vec-word-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+.vec-word-label {
+  font-family: var(--font-mono); font-size: 0.78rem; font-weight: 600;
+  min-width: 80px; color: var(--color-text-primary);
+}
+.vec-bars {
+  display: flex; gap: 3px; align-items: flex-end;
+  height: 36px; overflow-x: auto; flex: 1;
+  scrollbar-width: thin;
+}
+.vec-bar {
+  flex-shrink: 0; width: 6px; border-radius: 2px 2px 0 0;
+  transition: height 0.3s;
+}
+.vec-dim-count {
+  font-family: var(--font-mono); font-size: 0.65rem; color: var(--color-text-muted);
+  white-space: nowrap; min-width: 60px; text-align: right;
+}
+
+/* ── Dimension slider ── */
+.dim-slider-row {
+  display: flex; align-items: center; gap: 1rem; margin: 1rem 0;
+  font-family: var(--font-mono); font-size: 0.75rem;
+}
+.dim-slider-row label { color: var(--color-text-secondary); white-space: nowrap; }
+.dim-slider-row input[type=range] { flex: 1; accent-color: var(--color-indigo); }
+.dim-slider-val {
+  min-width: 60px; text-align: center;
+  background: var(--color-indigo-light); color: var(--color-indigo-dark);
+  border-radius: var(--radius-md); padding: 2px 8px; font-weight: 600;
+}
+
+/* ── Dimension annotation strip ── */
+.dim-annotations {
+  display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem;
+}
+.dim-ann {
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-md); padding: 3px 10px;
+  font-family: var(--font-mono); font-size: 0.68rem; color: var(--color-text-secondary);
+}
+.dim-ann b { color: var(--color-text-primary); }
+
+/* ── Insight box ── */
+.dim-insight {
+  background: var(--color-indigo-light); border: 1px solid var(--color-indigo-mid);
+  border-radius: var(--radius-xl); padding: 0.85rem 1rem;
+  font-family: var(--font-mono); font-size: 0.72rem; color: var(--color-indigo-deeper);
+  line-height: 1.65; margin-top: 1rem;
+}
+
+/* ── Collapse/compare table ── */
+.collapse-table {
+  width: 100%; border-collapse: collapse; margin-top: 1rem;
+  font-family: var(--font-mono); font-size: 0.75rem;
+}
+.collapse-table th {
+  background: var(--color-indigo-light); color: var(--color-indigo-dark);
+  padding: 6px 12px; text-align: left; font-weight: 600;
+  border: 1px solid var(--color-indigo-mid);
+}
+.collapse-table td {
+  padding: 5px 12px; border: 1px solid var(--color-border);
+  color: var(--color-text-secondary); background: var(--color-surface);
+  vertical-align: top;
+}
+.collapse-table tr:nth-child(even) td { background: var(--color-surface-alt); }
+
+/* ── Projection strip (step 3) ── */
+.proj-wrap {
+  background: var(--color-canvas-bg); border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl); padding: 1rem 1.25rem; position: relative;
+}
+.proj-canvas { display: block; width: 100%; border-radius: var(--radius-lg); }
+</style>
+
+<div class="dim-section">
+<div class="dim-section-inner">
+
+  <div class="dim-h1">From 2D to High-Dimensional Embeddings</div>
+  <div class="dim-sub">// The canvas above is a projection. Real embeddings live in 768–4096 dimensions. Here's what that actually means.</div>
+
+  <!-- STEP TABS -->
+  <div class="step-tabs" id="dimTabs">
+    <button class="step-tab active" onclick="showStep(0,this)">1 · What is a dimension?</button>
+    <button class="step-tab" onclick="showStep(1,this)">2 · Building up dimensions</button>
+    <button class="step-tab" onclick="showStep(2,this)">3 · Why not just 2D?</button>
+    <button class="step-tab" onclick="showStep(3,this)">4 · Projection to 2D</button>
+    <button class="step-tab" onclick="showStep(4,this)">5 · Real model sizes</button>
+  </div>
+
+  <!-- ── STEP 0: What is a dimension ── -->
+  <div class="step-panel visible" id="dimStep0">
+    <div class="dim-grid">
+      <div>
+        <div class="dim-canvas-box">
+          <canvas id="c2d" width="380" height="260"></canvas>
+          <div class="dim-canvas-label">2D space — each word has 2 numbers: x, y</div>
+        </div>
+      </div>
+      <div class="dim-prose">
+        <h3>A dimension is just one number</h3>
+        <p>An embedding is a list of floating-point numbers — one per <b>dimension</b>. In 2D you have two numbers: <code>[x, y]</code>. In 768D you have 768 numbers.</p>
+        <br>
+        <p>You can think of each number as measuring one axis of meaning. A 2D space might have axes for <b>Royalty</b> and <b>Power</b>. A 768D space has 768 axes — most are entangled combinations of concepts the model discovered by reading billions of words.</p>
+        <br>
+        <p>The canvas to the left shows <b>4 words in 2D</b>. King and Queen are close. Sunset is far. That proximity is the whole point of embeddings.</p>
+      </div>
+    </div>
+    <div class="vec-display" id="step0vecs"></div>
+    <div class="dim-insight">
+      <b>Key idea:</b> "Embedding" = a word encoded as a point in a geometric space. Two words that appear in similar contexts end up as nearby points. Distance in the space = difference in meaning.
+    </div>
+  </div>
+
+  <!-- ── STEP 1: Building up dimensions ── -->
+  <div class="step-panel" id="dimStep1">
+    <p style="font-size:0.88rem;color:var(--color-text-secondary);line-height:1.7;margin-bottom:1rem">
+      Drag the slider to add more dimensions. Watch how each new dimension encodes a different aspect of meaning — and how the vectors for <b style="color:#6366f1">king</b>, <b style="color:#10b981">loan</b>, and <b style="color:#f43f5e">sunset</b> look increasingly different from each other.
+    </p>
+    <div class="dim-slider-row">
+      <label>Dimensions:</label>
+      <input type="range" id="dimSlider" min="1" max="16" value="2" oninput="updateDimSlider()">
+      <div class="dim-slider-val" id="dimSliderVal">2</div>
+    </div>
+    <div id="dimAnnotations" class="dim-annotations"></div>
+    <div class="vec-display" id="step1vecs"></div>
+    <div class="dim-insight" id="dimInsightBox">
+      With only 2 dimensions, "bank" and "loan" are close. With more dimensions, the model can simultaneously encode <b>semantic domain, syntactic role, formality, and hundreds of subtler features</b> — all as directions in the same space.
+    </div>
+  </div>
+
+  <!-- ── STEP 2: Why not just 2D ── -->
+  <div class="step-panel" id="dimStep2">
+    <div class="dim-grid">
+      <div>
+        <div class="dim-canvas-box">
+          <canvas id="c2dLimit" width="380" height="260"></canvas>
+          <div class="dim-canvas-label">2D: "bank" can only be in one place</div>
+        </div>
+        <div class="dim-insight" style="margin-top:0.75rem">
+          In 2D, "bank" sits between finance and river — a compromise. In high-D it gets its own axis per sense, and context determines which direction activates.
+        </div>
+      </div>
+      <div class="dim-prose">
+        <h3>2D forces trade-offs; high-D doesn't</h3>
+        <p>The word <b>"bank"</b> means both a financial institution and a river bank. In 2D you can only put it in one place — halfway between both clusters, far from each.</p>
+        <br>
+        <p>With more dimensions the model gets separate axes for <b>financial-context</b> and <b>geographical-context</b>. Depending on the surrounding sentence, different dimensions activate.</p>
+        <br>
+        <p>More generally, English has millions of words and concepts. The relationships between them form a <b>graph with millions of edges</b>. You can't faithfully embed that graph in 2D without massive distortion. In 768D or 4096D, far fewer compromises are needed.</p>
+        <br>
+        <table class="collapse-table">
+          <tr><th>Dimensions</th><th>What fits</th><th>What breaks</th></tr>
+          <tr><td>2</td><td>Simple 2-cluster demos</td><td>Polysemy, syntax, domain shift</td></tr>
+          <tr><td>50</td><td>Topic clusters</td><td>Fine-grained semantics</td></tr>
+          <tr><td>300</td><td>Word2Vec quality</td><td>Deep syntactic structure</td></tr>
+          <tr><td>768</td><td>BERT / ada-002</td><td>Very subtle nuance</td></tr>
+          <tr><td>4096</td><td>GPT-4 / large LLMs</td><td>Mostly nothing for NLP</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STEP 3: Projection to 2D ── -->
+  <div class="step-panel" id="dimStep3">
+    <div class="dim-grid">
+      <div>
+        <div class="proj-wrap">
+          <canvas id="cProj" class="proj-canvas" width="380" height="300"></canvas>
+        </div>
+        <div class="dim-canvas-label" style="text-align:center;padding:0.4rem;font-family:var(--font-mono);font-size:0.65rem;color:var(--color-text-muted)">
+          Simulated 8D vectors projected via PCA to 2D
+        </div>
+      </div>
+      <div class="dim-prose">
+        <h3>How do you visualise 768D?</h3>
+        <p>You can't draw 768 axes on a screen. Instead, researchers use <b>dimensionality reduction</b> — algorithms that squash N-dimensional points down to 2 or 3 while preserving as much of the neighbourhood structure as possible.</p>
+        <br>
+        <p>The three most common techniques:</p>
+        <ul style="margin:0.5rem 0 0.5rem 1.2rem;line-height:1.9;font-size:0.85rem">
+          <li><b>PCA</b> — finds the 2 directions of maximum variance. Fast, linear, global structure preserved. Loses local clusters.</li>
+          <li><b>t-SNE</b> — preserves local neighbourhoods well. Clusters pop out clearly. But distances between clusters are not meaningful.</li>
+          <li><b>UMAP</b> — faster than t-SNE, preserves both local and some global structure. Current standard for embedding visualisation.</li>
+        </ul>
+        <p>The canvas above <b>demos</b> uses <code>[x, y]</code> positions that were <em>manually set</em> to give an intuition — not computed from real model weights. The chart here shows a toy 8D→2D PCA projection so you can see the distortion involved.</p>
+        <div class="dim-insight" style="margin-top:0.75rem">
+          Every 2D embedding plot you've seen in a paper, blog post, or demo — including the canvas at the top of this page — is a lossy projection. The true geometry lives in hundreds of dimensions.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STEP 4: Real model sizes ── -->
+  <div class="step-panel" id="dimStep4">
+    <div class="dim-prose" style="max-width:100%">
+      <h3>How many dimensions do real models use?</h3>
+    </div>
+    <div style="overflow-x:auto;margin-top:0.75rem">
+      <table class="collapse-table" style="min-width:620px">
+        <tr>
+          <th>Model</th>
+          <th>Embedding dims</th>
+          <th>Vocab size</th>
+          <th>Context window</th>
+          <th>Typical use</th>
+        </tr>
+        <tr><td>word2vec (2013)</td><td>50 – 300</td><td>3M words</td><td>n/a (static)</td><td>Analogy research, classic NLP</td></tr>
+        <tr><td>GloVe (2014)</td><td>50 – 300</td><td>400K words</td><td>n/a (static)</td><td>Sentence similarity baselines</td></tr>
+        <tr><td>BERT-base (2018)</td><td>768</td><td>30K tokens</td><td>512</td><td>Classification, QA, RAG</td></tr>
+        <tr><td>BERT-large (2018)</td><td>1 024</td><td>30K tokens</td><td>512</td><td>Higher-quality classification</td></tr>
+        <tr><td>OpenAI ada-002</td><td>1 536</td><td>100K tokens</td><td>8 192</td><td>Production RAG, semantic search</td></tr>
+        <tr><td>OpenAI text-3-large</td><td>3 072</td><td>100K tokens</td><td>8 192</td><td>High-precision retrieval</td></tr>
+        <tr><td>GPT-4 (hidden layer)</td><td>~12 288</td><td>100K tokens</td><td>128K</td><td>Generation (not exposed as embeddings)</td></tr>
+      </table>
+    </div>
+    <div style="margin-top:1.25rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem">
+      <div class="dim-insight">
+        <b>More dims ≠ always better.</b><br>
+        ada-002 at 1 536D beats BERT-large at 1 024D in most RAG benchmarks — but the difference is training data and loss function, not just dimensionality.
+      </div>
+      <div class="dim-insight" style="background:var(--color-emerald-light);border-color:var(--color-emerald-mid);color:var(--color-emerald-deeper)">
+        <b>Storage cost scales linearly.</b><br>
+        1M documents × 1 536 dims × 4 bytes (float32) = <b>6 GB</b> just for the vectors. This is why vector databases use quantisation (int8, binary).
+      </div>
+      <div class="dim-insight" style="background:var(--color-amber-light);border-color:var(--color-amber-mid);color:var(--color-amber-deeper)">
+        <b>Curse of dimensionality.</b><br>
+        In very high dimensions, distances between random points converge. Cosine similarity (angle, not distance) is preferred precisely because it's more stable at high D.
+      </div>
+    </div>
+  </div>
+
+</div><!-- /.dim-section-inner -->
+</div><!-- /.dim-section -->
+
+<script>
+/* ════════════════════════════════════════════════════
+   STEP NAVIGATION
+   ════════════════════════════════════════════════════ */
+function showStep(idx, el) {
+  document.querySelectorAll('.step-tab').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.step-panel').forEach((p, i) => {
+    p.classList.toggle('visible', i === idx);
+  });
+  // Lazy init canvases
+  if (idx === 0) initStep0();
+  if (idx === 1) initStep1();
+  if (idx === 2) initStep2();
+  if (idx === 3) initStep3();
+}
+
+/* ── Shared word data — 6D toy embeddings ── */
+// Dims: [royalty, finance, nature, formality, animate, concrete]
+const DEMO_WORDS = [
+  { word: 'king',    color: '#6366f1', vec6: [0.92, 0.08, 0.05, 0.88, 0.95, 0.40] },
+  { word: 'queen',   color: '#818cf8', vec6: [0.90, 0.07, 0.06, 0.86, 0.95, 0.42] },
+  { word: 'loan',    color: '#34d399', vec6: [0.04, 0.91, 0.02, 0.75, 0.10, 0.30] },
+  { word: 'bank',    color: '#f59e0b', vec6: [0.05, 0.70, 0.30, 0.65, 0.10, 0.60] },
+  { word: 'sunset',  color: '#f43f5e', vec6: [0.02, 0.03, 0.88, 0.20, 0.05, 0.75] },
+  { word: 'river',   color: '#0891b2', vec6: [0.01, 0.05, 0.92, 0.18, 0.05, 0.80] },
+];
+
+const DIM_LABELS_6 = ['Royalty', 'Finance', 'Nature', 'Formality', 'Animate', 'Concrete'];
+const DIM_COLORS_6 = ['#6366f1','#34d399','#0891b2','#f59e0b','#f43f5e','#8b5cf6'];
+
+/* expand 6D to N dims by cycling & adding noise */
+function expandVec(vec6, ndims) {
+  const out = [];
+  // Seeded-ish noise per word (deterministic)
+  const seed = vec6.reduce((a,b)=>a+b, 0);
+  for (let i = 0; i < ndims; i++) {
+    const base = vec6[i % 6];
+    // Add subtle deterministic variation using sine
+    const noise = Math.sin(seed * (i + 1) * 7.3) * 0.15;
+    out.push(Math.max(0, Math.min(1, base + noise)));
+  }
+  return out;
+}
+
+/* ════════════════════════════════════════════════════
+   STEP 0 — Simple 2D canvas + vec display
+   ════════════════════════════════════════════════════ */
+const STEP0_POSITIONS = [
+  { word:'king',   x:0.25, y:0.25, color:'#6366f1' },
+  { word:'queen',  x:0.30, y:0.20, color:'#818cf8' },
+  { word:'loan',   x:0.72, y:0.30, color:'#34d399' },
+  { word:'sunset', x:0.18, y:0.72, color:'#f43f5e' },
+];
+
+let step0done = false;
+function initStep0() {
+  if (step0done) return; step0done = true;
+  const cv = document.getElementById('c2d');
+  const cx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+
+  // Draw grid
+  cx.strokeStyle = 'rgba(0,0,0,0.06)'; cx.lineWidth = 1;
+  for (let x=0;x<W;x+=40){cx.beginPath();cx.moveTo(x,0);cx.lineTo(x,H);cx.stroke();}
+  for (let y=0;y<H;y+=40){cx.beginPath();cx.moveTo(0,y);cx.lineTo(W,y);cx.stroke();}
+
+  // Axis arrows
+  cx.strokeStyle = 'rgba(0,0,0,0.18)'; cx.lineWidth = 1.5;
+  cx.beginPath(); cx.moveTo(30, H-30); cx.lineTo(W-10, H-30); cx.stroke();
+  cx.beginPath(); cx.moveTo(30, H-30); cx.lineTo(30, 10); cx.stroke();
+  cx.font = '10px Fira Code, monospace'; cx.fillStyle = 'rgba(0,0,0,0.35)';
+  cx.fillText('dim 1 →', W-65, H-14);
+  cx.save(); cx.translate(14, 80); cx.rotate(-Math.PI/2); cx.fillText('dim 2 ↑', 0, 0); cx.restore();
+
+  // Words
+  STEP0_POSITIONS.forEach(w => {
+    const px = 30 + w.x * (W - 40), py = 10 + w.y * (H - 40);
+    // Glow
+    const g = cx.createRadialGradient(px,py,0,px,py,22);
+    g.addColorStop(0, w.color+'55'); g.addColorStop(1,'transparent');
+    cx.fillStyle = g; cx.beginPath(); cx.arc(px,py,22,0,Math.PI*2); cx.fill();
+    // Dot
+    cx.fillStyle = w.color; cx.beginPath(); cx.arc(px,py,7,0,Math.PI*2); cx.fill();
+    // Label
+    cx.font = '600 12px Fira Code, monospace'; cx.fillStyle = w.color;
+    cx.textAlign = 'left'; cx.fillText(w.word, px+11, py+5);
+    // Coordinates
+    cx.font = '10px Fira Code, monospace'; cx.fillStyle = 'rgba(0,0,0,0.4)';
+    cx.fillText(`[${w.x.toFixed(2)}, ${w.y.toFixed(2)}]`, px+11, py+17);
+  });
+
+  // 2D vector display
+  const el = document.getElementById('step0vecs');
+  el.innerHTML = '<div class="vec-display-title">VECTORS — 2 DIMENSIONS</div>';
+  STEP0_POSITIONS.forEach(w => {
+    el.innerHTML += `
+      <div class="vec-word-row">
+        <div class="vec-word-label" style="color:${w.color}">${w.word}</div>
+        <div class="vec-bars">
+          ${[w.x, w.y].map((v,i)=>`<div class="vec-bar" style="height:${Math.max(4,v*32)}px;background:${DIM_COLORS_6[i]};border-radius:2px 2px 0 0;width:18px;flex-shrink:0"></div>`).join('')}
+        </div>
+        <div class="vec-dim-label" style="font-family:var(--font-mono);font-size:0.68rem;color:var(--color-text-muted);min-width:70px">&nbsp;[${w.x.toFixed(2)}, ${w.y.toFixed(2)}]</div>
+      </div>`;
+  });
+}
+
+/* ════════════════════════════════════════════════════
+   STEP 1 — Dimension slider
+   ════════════════════════════════════════════════════ */
+const DIM_INSIGHT_TEXT = {
+  1:  'With 1D, everything is on a line. "King" and "loan" might overlap if they share one feature. Almost all context is lost.',
+  2:  'At 2D we can draw a meaningful scatter plot. Basic clusters emerge (royalty vs finance vs nature). But polysemy, syntax, and formality are invisible.',
+  4:  '4D starts to separate "bank" (finance+nature ambiguous) from "river" (pure nature). We\'re beginning to encode semantic nuance.',
+  8:  '8D is close to word2vec-small. Analogy arithmetic (king−man+woman≈queen) starts working reliably here.',
+  12: '12D gives noticeably richer structure — grammatical role and domain begin to separate cleanly.',
+  16: '16+ dimensions approach the quality of GloVe-50. Many downstream tasks see significant accuracy gains over 2D.',
+};
+
+let step1done = false;
+function initStep1() {
+  if (!step1done) { step1done = true; updateDimSlider(); }
+}
+function updateDimSlider() {
+  const n = parseInt(document.getElementById('dimSlider').value);
+  document.getElementById('dimSliderVal').textContent = n;
+
+  // Annotations
+  const annEl = document.getElementById('dimAnnotations');
+  const labels = [];
+  for (let i=0; i<n; i++) labels.push(`<div class="dim-ann"><b>dim ${i+1}</b> ${DIM_LABELS_6[i % 6]}</div>`);
+  annEl.innerHTML = labels.join('');
+
+  // Vec bars
+  const el = document.getElementById('step1vecs');
+  el.innerHTML = `<div class="vec-display-title">VECTORS — ${n} DIMENSION${n>1?'S':''}</div>`;
+  DEMO_WORDS.forEach(w => {
+    const vec = expandVec(w.vec6, n);
+    const bars = vec.map((v,i) => {
+      const h = Math.max(3, v * 32);
+      const col = DIM_COLORS_6[i % 6];
+      return `<div class="vec-bar" style="height:${h}px;background:${col};opacity:${0.4+v*0.6};width:${Math.max(4, Math.floor(200/n))}px;flex-shrink:0"></div>`;
+    }).join('');
+    const shortVec = vec.slice(0,4).map(v=>v.toFixed(2)).join(', ') + (n>4?', …':'');
+    el.innerHTML += `
+      <div class="vec-word-row">
+        <div class="vec-word-label" style="color:${w.color}">${w.word}</div>
+        <div class="vec-bars">${bars}</div>
+        <div class="vec-dim-count">${n}D</div>
+      </div>`;
+  });
+
+  // Insight
+  const keys = Object.keys(DIM_INSIGHT_TEXT).map(Number).sort((a,b)=>a-b);
+  let txt = DIM_INSIGHT_TEXT[1];
+  for (const k of keys) { if (n >= k) txt = DIM_INSIGHT_TEXT[k]; }
+  document.getElementById('dimInsightBox').innerHTML = txt;
+}
+
+/* ════════════════════════════════════════════════════
+   STEP 2 — 2D limitation canvas
+   ════════════════════════════════════════════════════ */
+const STEP2_WORDS = [
+  { word:'king',    x:0.22, y:0.22, color:'#6366f1' },
+  { word:'queen',   x:0.28, y:0.17, color:'#818cf8' },
+  { word:'loan',    x:0.72, y:0.25, color:'#34d399' },
+  { word:'credit',  x:0.78, y:0.20, color:'#34d399' },
+  { word:'river',   x:0.20, y:0.72, color:'#0891b2' },
+  { word:'mountain',x:0.28, y:0.78, color:'#0891b2' },
+  // bank must be a compromise
+  { word:'bank',    x:0.50, y:0.45, color:'#f59e0b', ambig: true },
+];
+
+let step2done = false;
+function initStep2() {
+  if (step2done) return; step2done = true;
+  const cv = document.getElementById('c2dLimit');
+  const cx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+
+  cx.strokeStyle = 'rgba(0,0,0,0.05)'; cx.lineWidth = 1;
+  for (let x=0;x<W;x+=40){cx.beginPath();cx.moveTo(x,0);cx.lineTo(x,H);cx.stroke();}
+  for (let y=0;y<H;y+=40){cx.beginPath();cx.moveTo(0,y);cx.lineTo(W,y);cx.stroke();}
+
+  // Draw dashed lines from bank to both clusters
+  const bankX = 0.50*W, bankY = 0.45*H;
+  const finX = 0.75*W, finY = 0.22*H;
+  const natX = 0.24*W, natY = 0.75*H;
+  cx.setLineDash([4,4]); cx.strokeStyle = '#f59e0b'; cx.lineWidth = 1.5;
+  cx.beginPath(); cx.moveTo(bankX,bankY); cx.lineTo(finX,finY); cx.stroke();
+  cx.beginPath(); cx.moveTo(bankX,bankY); cx.lineTo(natX,natY); cx.stroke();
+  cx.setLineDash([]);
+
+  STEP2_WORDS.forEach(w => {
+    const px = w.x*W, py = w.y*H;
+    if (w.ambig) {
+      // Pulsing ring hint
+      cx.strokeStyle = '#f59e0b66'; cx.lineWidth = 2;
+      cx.beginPath(); cx.arc(px,py,18,0,Math.PI*2); cx.stroke();
+    }
+    const g = cx.createRadialGradient(px,py,0,px,py,18);
+    g.addColorStop(0, w.color+'55'); g.addColorStop(1,'transparent');
+    cx.fillStyle = g; cx.beginPath(); cx.arc(px,py,18,0,Math.PI*2); cx.fill();
+    cx.fillStyle = w.color; cx.beginPath(); cx.arc(px,py,w.ambig?9:6,0,Math.PI*2); cx.fill();
+    cx.font = `${w.ambig?'700':'500'} 12px Fira Code, monospace`;
+    cx.fillStyle = w.color; cx.textAlign = 'left';
+    cx.fillText(w.word, px+12, py+5);
+    if (w.ambig) {
+      cx.font = '10px Fira Code, monospace'; cx.fillStyle = '#d97706';
+      cx.fillText('← compromise', px+12, py+18);
+    }
+  });
+}
+
+/* ════════════════════════════════════════════════════
+   STEP 3 — Toy PCA projection canvas
+   ════════════════════════════════════════════════════ */
+let step3done = false;
+function initStep3() {
+  if (step3done) return; step3done = true;
+  const cv = document.getElementById('cProj');
+  const cx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+
+  // Compute toy 8D vectors then do a rough PCA-like projection
+  const words8D = DEMO_WORDS.map(w => ({ ...w, vec: expandVec(w.vec6, 8) }));
+
+  // Mean-center
+  const mean = Array(8).fill(0);
+  words8D.forEach(w => w.vec.forEach((v,i) => mean[i] += v / words8D.length));
+  words8D.forEach(w => { w.centered = w.vec.map((v,i) => v - mean[i]); });
+
+  // First two principal "directions" via power iteration (toy, 3 iter)
+  function powerVec(data, existing) {
+    let v = Array(8).fill(0).map((_,i) => Math.sin(i * 1.7 + (existing ? 3.1 : 0)));
+    for (let iter=0; iter<40; iter++) {
+      let nv = Array(8).fill(0);
+      data.forEach(w => {
+        const dot = w.centered.reduce((s,c,i)=>s+c*v[i],0);
+        w.centered.forEach((c,i) => nv[i] += dot * c);
+      });
+      if (existing) {
+        // deflate: subtract projection onto existing
+        const dot = existing.reduce((s,e,i)=>s+e*nv[i],0);
+        nv = nv.map((x,i)=>x - dot*existing[i]);
+      }
+      const len = Math.sqrt(nv.reduce((s,x)=>s+x*x,0)) || 1;
+      v = nv.map(x=>x/len);
+    }
+    return v;
+  }
+  const pc1 = powerVec(words8D, null);
+  const pc2 = powerVec(words8D, pc1);
+
+  // Project
+  words8D.forEach(w => {
+    w.pc1 = w.centered.reduce((s,c,i)=>s+c*pc1[i],0);
+    w.pc2 = w.centered.reduce((s,c,i)=>s+c*pc2[i],0);
+  });
+
+  // Scale to canvas
+  const xs = words8D.map(w=>w.pc1), ys = words8D.map(w=>w.pc2);
+  const xmin = Math.min(...xs), xmax = Math.max(...xs);
+  const ymin = Math.min(...ys), ymax = Math.max(...ys);
+  const pad = 50;
+  words8D.forEach(w => {
+    w.sx = pad + (w.pc1 - xmin) / ((xmax - xmin) || 1) * (W - pad*2);
+    w.sy = pad + (w.pc2 - ymin) / ((ymax - ymin) || 1) * (H - pad*2);
+  });
+
+  // Background
+  cx.fillStyle = '#eef0f8';
+  cx.fillRect(0,0,W,H);
+
+  // Grid
+  cx.strokeStyle = 'rgba(0,0,0,0.05)'; cx.lineWidth = 1;
+  for (let x=0;x<W;x+=40){cx.beginPath();cx.moveTo(x,0);cx.lineTo(x,H);cx.stroke();}
+  for (let y=0;y<H;y+=40){cx.beginPath();cx.moveTo(0,y);cx.lineTo(W,y);cx.stroke();}
+
+  // PC axes labels
+  cx.font = '10px Fira Code, monospace'; cx.fillStyle = 'rgba(0,0,0,0.3)';
+  cx.textAlign = 'center';
+  cx.fillText('PC1 (explains most variance) →', W/2, H-8);
+  cx.save(); cx.translate(12, H/2); cx.rotate(-Math.PI/2);
+  cx.fillText('PC2 →', 0, 0); cx.restore();
+
+  // Draw words
+  words8D.forEach(w => {
+    const g = cx.createRadialGradient(w.sx,w.sy,0,w.sx,w.sy,20);
+    g.addColorStop(0, w.color+'55'); g.addColorStop(1,'transparent');
+    cx.fillStyle = g; cx.beginPath(); cx.arc(w.sx,w.sy,20,0,Math.PI*2); cx.fill();
+    cx.fillStyle = w.color; cx.beginPath(); cx.arc(w.sx,w.sy,7,0,Math.PI*2); cx.fill();
+    cx.font = '600 12px Fira Code, monospace'; cx.fillStyle = w.color;
+    cx.textAlign = 'left'; cx.fillText(w.word, w.sx+10, w.sy+5);
+    cx.font = '9px Fira Code, monospace'; cx.fillStyle = 'rgba(0,0,0,0.4)';
+    cx.fillText(`8D→2D`, w.sx+10, w.sy+17);
+  });
+}
+
+// Init step 0 on load
+initStep0();
+</script>
 </body>
 </html>

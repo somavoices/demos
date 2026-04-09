@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Token → Embedding → Dimensions</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<style>
+:root { --page-accent: #7c3aed; }
+body { display:flex; flex-direction:column; min-height:100vh; }
+
+/* ── Layout ───────────────────────────────────────────────── */
+.page-body {
+  flex:1; display:flex; flex-direction:column; overflow:hidden;
+}
+.top-strip {
+  background:var(--color-surface);
+  border-bottom:1px solid var(--color-border);
+  padding:1rem 2rem;
+  display:flex; align-items:center; gap:1rem; flex-shrink:0;
+}
+.top-strip h1 { font-size:1.1rem; font-weight:700; }
+.top-strip h1 span { color:var(--page-accent); }
+.top-strip .subtitle {
+  font-family:var(--font-mono); font-size:0.72rem;
+  color:var(--color-text-secondary); margin-left:auto;
+}
+
+.pipeline {
+  flex:1; display:grid;
+  grid-template-columns: 220px 1fr 260px;
+  min-height:0;
+}
+
+/* ── Column 1: Input + tokens ─────────────────────────────── */
+.col-input {
+  background:var(--color-surface);
+  border-right:1px solid var(--color-border);
+  padding:1.25rem;
+  display:flex; flex-direction:column; gap:1rem;
+  overflow-y:auto;
+}
+.col-label {
+  font-family:var(--font-mono); font-size:0.62rem;
+  color:var(--color-text-muted); letter-spacing:2px; text-transform:uppercase;
+  margin-bottom:0.25rem;
+}
+textarea {
+  width:100%; background:var(--color-surface-alt);
+  border:1.5px solid var(--color-border); border-radius:8px;
+  padding:0.75rem; outline:none; resize:none;
+  font-family:var(--font-mono); font-size:0.82rem;
+  color:var(--color-text-primary); line-height:1.6;
+  transition:border-color 0.2s;
+}
+textarea:focus { border-color:var(--page-accent); }
+
+.token-list { display:flex; flex-direction:column; gap:4px; flex:1; overflow-y:auto; }
+.tok-row {
+  display:flex; align-items:center; gap:0.5rem;
+  padding:5px 8px; border-radius:7px; cursor:pointer;
+  border:1.5px solid transparent; transition:all 0.15s;
+  font-family:var(--font-mono); font-size:0.75rem;
+}
+.tok-row:hover { background:var(--color-surface-alt); border-color:var(--color-border-md); }
+.tok-row.active {
+  border-color:var(--page-accent);
+  background:var(--color-violet-light);
+}
+.tok-chip {
+  font-size:0.78rem; font-weight:600; padding:2px 8px;
+  border-radius:5px; white-space:pre; flex-shrink:0;
+}
+.tok-id {
+  font-size:0.62rem; color:var(--color-text-muted);
+  margin-left:auto; flex-shrink:0;
+}
+.tok-arrow {
+  font-size:0.6rem; color:var(--page-accent); opacity:0;
+  transition:opacity 0.15s; margin-left:2px;
+}
+.tok-row.active .tok-arrow { opacity:1; }
+
+/* ── Column 2: Main viz area ──────────────────────────────── */
+.col-viz {
+  background:var(--color-canvas-bg);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+
+/* Stage tabs */
+.stage-tabs {
+  display:flex; border-bottom:1px solid var(--color-border);
+  background:var(--color-surface); flex-shrink:0;
+}
+.stage-tab {
+  padding:0.6rem 1.1rem; font-family:var(--font-mono); font-size:0.68rem;
+  letter-spacing:1.5px; text-transform:uppercase; cursor:pointer;
+  border-bottom:2px solid transparent; color:var(--color-text-muted);
+  transition:all 0.15s; border:none; background:none; font-weight:500;
+}
+.stage-tab.active {
+  color:var(--page-accent); border-bottom-color:var(--page-accent);
+}
+
+/* Stage panels */
+.stage-content { flex:1; overflow:hidden; position:relative; }
+.stage-panel {
+  position:absolute; inset:0; padding:1.5rem;
+  display:none; flex-direction:column; gap:1rem; overflow-y:auto;
+}
+.stage-panel.active { display:flex; }
+
+/* ── Stage A: Lookup table ─────────────────────────────────── */
+.lookup-explainer {
+  background:var(--color-surface); border:1px solid var(--color-border);
+  border-radius:10px; padding:1rem; font-family:var(--font-mono);
+  font-size:0.75rem; color:var(--color-text-secondary); line-height:1.7;
+}
+.lookup-explainer b { color:var(--page-accent); }
+
+.matrix-wrap {
+  background:var(--color-surface); border:1px solid var(--color-border);
+  border-radius:10px; overflow:hidden; flex:1;
+}
+.matrix-header {
+  display:grid; grid-template-columns:90px 1fr;
+  background:var(--color-surface-alt); border-bottom:1px solid var(--color-border);
+  font-family:var(--font-mono); font-size:0.62rem;
+  color:var(--color-text-muted); letter-spacing:1px;
+  padding:0.5rem 0.75rem;
+}
+.matrix-rows { overflow-y:auto; max-height:320px; }
+.matrix-row {
+  display:grid; grid-template-columns:90px 1fr;
+  padding:0.4rem 0.75rem; border-bottom:1px solid var(--color-border-light);
+  align-items:center; transition:background 0.15s; cursor:pointer;
+}
+.matrix-row:hover { background:var(--color-surface-alt); }
+.matrix-row.highlighted {
+  background:var(--color-violet-light);
+  border-left:3px solid var(--page-accent);
+}
+.matrix-row-id {
+  font-family:var(--font-mono); font-size:0.72rem;
+  color:var(--color-text-secondary); display:flex; align-items:center; gap:0.4rem;
+}
+.matrix-row-id .tok-label {
+  font-size:0.7rem; font-weight:600; padding:1px 6px;
+  border-radius:4px; white-space:pre;
+}
+.matrix-mini-bars {
+  display:flex; gap:2px; align-items:flex-end; height:24px;
+}
+.matrix-mini-bar {
+  flex:1; border-radius:2px 2px 0 0; min-height:2px;
+  transition:height 0.3s ease;
+}
+
+/* ── Stage B: Vector as numbers ────────────────────────────── */
+.vector-header {
+  display:flex; align-items:center; gap:1rem; flex-wrap:wrap;
+}
+.vector-token-badge {
+  display:inline-flex; align-items:center; gap:0.5rem;
+  padding:0.4rem 0.9rem; border-radius:8px; font-family:var(--font-mono);
+  font-size:0.85rem; font-weight:600; border:1.5px solid;
+}
+.dim-count-badge {
+  font-family:var(--font-mono); font-size:0.72rem;
+  color:var(--color-text-secondary);
+  background:var(--color-surface); border:1px solid var(--color-border);
+  padding:0.3rem 0.75rem; border-radius:100px;
+}
+
+.vector-array {
+  background:var(--color-surface); border:1px solid var(--color-border);
+  border-radius:10px; padding:1rem; font-family:var(--font-mono);
+  font-size:0.72rem; color:var(--color-text-primary); line-height:2;
+  overflow-x:auto; word-break:break-all;
+}
+.vector-array .bracket { color:var(--color-text-muted); }
+.vector-array .val { transition:color 0.3s; }
+.vector-array .val.pos { color:var(--color-emerald-dark); }
+.vector-array .val.neg { color:var(--color-red-dark); }
+.vector-array .dim-highlight {
+  background:var(--color-violet-light); border-radius:3px;
+  padding:0 2px; border:1px solid var(--color-violet-mid);
+}
+
+.dim-bar-chart {
+  flex:1; background:var(--color-surface); border:1px solid var(--color-border);
+  border-radius:10px; padding:1rem; display:flex; flex-direction:column; gap:0.5rem;
+  overflow-y:auto;
+}
+.dim-bar-row {
+  display:grid; grid-template-columns:70px 1fr 55px;
+  align-items:center; gap:0.5rem;
+}
+.dim-bar-label {
+  font-family:var(--font-mono); font-size:0.62rem;
+  color:var(--color-text-muted); text-align:right; white-space:nowrap;
+}
+.dim-bar-track {
+  background:var(--color-border-light); border-radius:100px; height:10px;
+  position:relative; overflow:visible;
+}
+.dim-bar-center {
+  position:absolute; left:50%; top:-1px; bottom:-1px;
+  width:1px; background:var(--color-border-md);
+}
+.dim-bar-fill {
+  position:absolute; height:100%; border-radius:100px;
+  transition:all 0.4s ease;
+}
+.dim-bar-fill.pos {
+  left:50%; background:var(--color-emerald);
+}
+.dim-bar-fill.neg {
+  right:50%; background:var(--color-red-bright);
+}
+.dim-bar-val {
+  font-family:var(--font-mono); font-size:0.62rem;
+  color:var(--color-text-secondary); text-align:right;
+}
+
+/* ── Stage C: Compare two words ────────────────────────────── */
+.compare-grid {
+  display:grid; grid-template-columns:1fr 80px 1fr;
+  gap:0.75rem; align-items:start;
+}
+.compare-col-head {
+  display:flex; align-items:center; gap:0.5rem;
+  font-family:var(--font-mono); font-size:0.75rem; font-weight:600;
+  margin-bottom:0.5rem;
+}
+.compare-spacer-head {
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-mono); font-size:0.65rem;
+  color:var(--color-text-muted); padding-top:1.75rem;
+}
+.compare-bars { display:flex; flex-direction:column; gap:4px; }
+.cmp-row {
+  display:grid; grid-template-columns:60px 1fr;
+  align-items:center; gap:0.4rem;
+}
+.cmp-label { font-family:var(--font-mono); font-size:0.6rem; color:var(--color-text-muted); text-align:right; }
+.cmp-track {
+  background:var(--color-border-light); border-radius:100px; height:8px;
+  position:relative;
+}
+.cmp-fill {
+  position:absolute; height:100%; border-radius:100px; transition:all 0.4s ease;
+}
+.cmp-mid-col { display:flex; flex-direction:column; gap:4px; padding-top:0; }
+.cmp-mid-row {
+  height:8px; display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-mono); font-size:0.55rem; color:var(--color-text-muted);
+}
+.sim-badge {
+  text-align:center; background:var(--color-surface);
+  border:1px solid var(--color-border); border-radius:10px;
+  padding:0.75rem; font-family:var(--font-mono); grid-column:1/-1;
+}
+.sim-score { font-size:2rem; font-weight:700; color:var(--page-accent); }
+.sim-label { font-size:0.62rem; color:var(--color-text-muted); letter-spacing:1.5px; }
+
+.word-picker {
+  display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:0.5rem;
+}
+.word-btn {
+  padding:3px 10px; border-radius:100px; font-family:var(--font-mono);
+  font-size:0.7rem; cursor:pointer; border:1.5px solid var(--color-border);
+  background:var(--color-surface); color:var(--color-text-secondary);
+  transition:all 0.15s;
+}
+.word-btn:hover { border-color:var(--color-border-md); color:var(--color-text-primary); }
+.word-btn.active-a {
+  border-color:var(--page-accent); color:var(--page-accent);
+  background:var(--color-violet-light);
+}
+.word-btn.active-b {
+  border-color:var(--color-emerald); color:var(--color-emerald-dark);
+  background:var(--color-emerald-light);
+}
+
+/* ── Column 3: Concept sidebar ─────────────────────────────── */
+.col-info {
+  background:var(--color-surface);
+  border-left:1px solid var(--color-border);
+  padding:1.25rem;
+  display:flex; flex-direction:column; gap:1rem;
+  overflow-y:auto;
+}
+.insight-card {
+  background:var(--color-surface-alt); border:1px solid var(--color-border);
+  border-radius:10px; padding:0.9rem;
+}
+.insight-card h4 {
+  font-size:0.8rem; font-weight:700; margin-bottom:0.4rem;
+  display:flex; align-items:center; gap:0.4rem;
+}
+.insight-card h4 .dot {
+  width:6px; height:6px; border-radius:50%; background:var(--page-accent);
+  flex-shrink:0;
+}
+.insight-card p {
+  font-family:var(--font-mono); font-size:0.7rem;
+  color:var(--color-text-secondary); line-height:1.65;
+}
+.insight-card p b { color:var(--color-text-primary); }
+.insight-card p code {
+  background:var(--color-indigo-light); color:var(--color-indigo-dark);
+  padding:0 4px; border-radius:3px; font-size:0.65rem;
+}
+
+.pipeline-flow {
+  display:flex; flex-direction:column; gap:0; font-family:var(--font-mono);
+  font-size:0.7rem;
+}
+.pipe-step {
+  display:flex; align-items:center; gap:0.5rem;
+  padding:0.4rem 0.6rem; border-radius:7px;
+  transition:all 0.2s;
+}
+.pipe-step.active-step {
+  background:var(--color-violet-light);
+  color:var(--page-accent); font-weight:600;
+}
+.pipe-step .pipe-icon { font-size:0.9rem; width:20px; text-align:center; flex-shrink:0; }
+.pipe-arrow { text-align:center; color:var(--color-text-muted); padding:2px 0; font-size:0.7rem; }
+
+.dim-note {
+  background:var(--color-indigo-light); border:1px solid var(--color-indigo-100);
+  border-radius:8px; padding:0.75rem; font-family:var(--font-mono);
+  font-size:0.68rem; color:var(--color-indigo-dark); line-height:1.6;
+}
+.dim-note b { color:var(--color-indigo-deeper); }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html">← Demos</a>
+  <span class="nav-sep">/</span>
+  <span class="cur">Token → Embedding → Dimensions</span>
+</nav>
+
+<div class="page-body">
+  <div class="top-strip">
+    <h1>Token <span>→ Embedding → Dimensions</span></h1>
+    <span class="subtitle">Click any token to inspect its vector</span>
+  </div>
+
+  <div class="pipeline">
+
+    <!-- ── Col 1: Input + token list ───────────────────────── -->
+    <div class="col-input">
+      <div>
+        <div class="col-label">Input text</div>
+        <textarea id="inputText" rows="3" placeholder="Type any phrase…">The loan default risk is high</textarea>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:0.5rem;min-height:0;">
+        <div class="col-label">Tokens <span id="tokCount" style="color:var(--page-accent)"></span></div>
+        <div class="token-list" id="tokenList"></div>
+      </div>
+    </div>
+
+    <!-- ── Col 2: Main visualization ───────────────────────── -->
+    <div class="col-viz">
+      <div class="stage-tabs">
+        <button class="stage-tab active" data-tab="lookup">① Lookup Table</button>
+        <button class="stage-tab" data-tab="vector">② Vector Numbers</button>
+        <button class="stage-tab" data-tab="compare">③ Compare Words</button>
+      </div>
+
+      <div class="stage-content">
+
+        <!-- Stage A: Embedding matrix lookup -->
+        <div class="stage-panel active" id="panel-lookup">
+          <div class="lookup-explainer">
+            Every model has an <b>embedding matrix</b> — a giant table with one row per token ID.
+            When the model sees token <b id="exp-tok">"The"</b> (ID <b id="exp-id">464</b>), it reads
+            row <b id="exp-id2">464</b> from this table and gets back a vector of
+            <b>floats</b> — one number per dimension. Click a token on the left to highlight its row.
+          </div>
+          <div class="matrix-wrap">
+            <div class="matrix-header">
+              <div>Token ID / Text</div>
+              <div>Embedding vector (first 24 dims shown as bars)</div>
+            </div>
+            <div class="matrix-rows" id="matrixRows"></div>
+          </div>
+          <div class="dim-note">
+            Real models: <b>GPT-2</b> uses 768 dims · <b>GPT-3</b> uses 12,288 dims · <b>Claude / GPT-4</b> class models use ~8,000–12,000+ dims.
+            This demo uses <b>32 dimensions</b> with plausible semantic structure for clarity.
+          </div>
+        </div>
+
+        <!-- Stage B: Vector detail view -->
+        <div class="stage-panel" id="panel-vector">
+          <div class="vector-header">
+            <div class="vector-token-badge" id="vecTokenBadge">—</div>
+            <div class="dim-count-badge">32 dimensions</div>
+            <div style="margin-left:auto;font-family:var(--font-mono);font-size:0.68rem;color:var(--color-text-muted)">
+              Select a token on the left to inspect
+            </div>
+          </div>
+          <div class="vector-array" id="vectorArray">
+            <span class="bracket">[</span>
+            <span id="vecNums">select a token to see its vector</span>
+            <span class="bracket">]</span>
+          </div>
+          <div class="dim-bar-chart" id="dimBarChart"></div>
+        </div>
+
+        <!-- Stage C: Side-by-side comparison -->
+        <div class="stage-panel" id="panel-compare">
+          <div class="col-label" style="margin-bottom:0">Pick two words to compare</div>
+          <div class="word-picker" id="wordPicker"></div>
+          <div class="sim-badge" style="margin-bottom:0.25rem">
+            <div class="sim-score" id="simScore">—</div>
+            <div class="sim-label">COSINE SIMILARITY</div>
+          </div>
+          <div class="compare-grid" id="compareGrid">
+            <div>
+              <div class="compare-col-head">
+                <span id="cmpLabelA" style="color:var(--page-accent)">Word A</span>
+              </div>
+              <div class="compare-bars" id="cmpBarsA"></div>
+            </div>
+            <div>
+              <div class="compare-spacer-head">overlap</div>
+              <div class="cmp-mid-col" id="cmpMid"></div>
+            </div>
+            <div>
+              <div class="compare-col-head">
+                <span id="cmpLabelB" style="color:var(--color-emerald-dark)">Word B</span>
+              </div>
+              <div class="compare-bars" id="cmpBarsB"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Col 3: Info sidebar ──────────────────────────────── -->
+    <div class="col-info">
+      <div class="col-label">How it works</div>
+
+      <div class="pipeline-flow">
+        <div class="pipe-step active-step" id="pipe0">
+          <span class="pipe-icon">✏️</span> Text typed
+        </div>
+        <div class="pipe-arrow">↓</div>
+        <div class="pipe-step" id="pipe1">
+          <span class="pipe-icon">✂️</span> Tokenized → IDs
+        </div>
+        <div class="pipe-arrow">↓</div>
+        <div class="pipe-step" id="pipe2">
+          <span class="pipe-icon">📋</span> Matrix row lookup
+        </div>
+        <div class="pipe-arrow">↓</div>
+        <div class="pipe-step" id="pipe3">
+          <span class="pipe-icon">📊</span> 32-dim float vector
+        </div>
+        <div class="pipe-arrow">↓</div>
+        <div class="pipe-step" id="pipe4">
+          <span class="pipe-icon">🔢</span> Attention layers use it
+        </div>
+      </div>
+
+      <div class="insight-card">
+        <h4><span class="dot"></span>Why floats, not integers?</h4>
+        <p>Token IDs are integers (like <code>1234</code>), but the model can't do math with them directly — <code>1234 + 1 = 1235</code> is meaningless. Embeddings convert each ID into a <b>dense float vector</b> the network can do linear algebra on.</p>
+      </div>
+
+      <div class="insight-card">
+        <h4><span class="dot"></span>What do dimensions encode?</h4>
+        <p>Dimensions are <b>not</b> hand-labelled features. They emerge from training. Roughly: some encode syntax (noun vs verb), others encode sentiment, domain (finance vs medicine), tense, formality. No single dimension = one concept.</p>
+      </div>
+
+      <div class="insight-card">
+        <h4><span class="dot"></span>Same word, different context?</h4>
+        <p>These are <b>static embeddings</b> (one vector per token regardless of context). Transformer <b>attention layers</b> then blend them based on surrounding tokens — so "bank" (river) vs "bank" (finance) get different final representations.</p>
+      </div>
+
+      <div class="insight-card">
+        <h4><span class="dot"></span>Similarity = shared dimensions</h4>
+        <p>When two words share high values in similar dimensions, cosine similarity is high. The <b>Compare</b> tab shows this dimension-by-dimension — look for bars that move together.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── Simulated vocabulary with realistic token IDs ──────────────
+const VOCAB = {
+  // Financial / domain
+  'loan':     { id: 28289, cluster: 'finance' },
+  'default':  { id: 8244,  cluster: 'finance' },
+  'risk':     { id: 3643,  cluster: 'finance' },
+  'credit':   { id: 5979,  cluster: 'finance' },
+  'debt':     { id: 9785,  cluster: 'finance' },
+  'bank':     { id: 3331,  cluster: 'finance' },
+  'interest': { id: 1393,  cluster: 'finance' },
+  'mortgage': { id: 20406, cluster: 'finance' },
+  'fraud':    { id: 14054, cluster: 'finance' },
+  'payment':  { id: 8323,  cluster: 'finance' },
+  // Sentiment / polarity
+  'high':     { id: 1029,  cluster: 'positive' },
+  'low':      { id: 2587,  cluster: 'negative' },
+  'good':     { id: 922,   cluster: 'positive' },
+  'bad':      { id: 3460,  cluster: 'negative' },
+  'great':    { id: 2107,  cluster: 'positive' },
+  'poor':     { id: 2238,  cluster: 'negative' },
+  // Common function words
+  'the':      { id: 464,   cluster: 'function' },
+  'is':       { id: 318,   cluster: 'function' },
+  'a':        { id: 257,   cluster: 'function' },
+  'of':       { id: 286,   cluster: 'function' },
+  'in':       { id: 287,   cluster: 'function' },
+  'and':      { id: 290,   cluster: 'function' },
+  'to':       { id: 284,   cluster: 'function' },
+};
+
+const DIM = 32;
+
+// Cluster "basis" vectors — realistic structure
+const CLUSTER_BASIS = {
+  finance:  [.7,.6,.5,.4,.5,.6,.3,.2,.1,.0,-.1,-.2,.8,.7,.6,.5,.3,.4,.2,.1,.0,-.1,.5,.4,.3,.2,.1,.6,.7,.8,.5,.4],
+  positive: [.1,.2,.3,.6,.7,.8,.6,.5,.4,.3,.2,.1,.0,-.1,-.2,.1,.2,.3,.7,.8,.9,.8,.7,.6,.5,.4,.3,.2,.1,.0,.1,.2],
+  negative: [.1,.2,.3,-.6,-.7,-.8,-.6,-.5,-.4,-.3,-.2,-.1,.0,.1,.2,-.1,-.2,-.3,-.7,-.8,-.9,-.8,-.7,-.6,-.5,-.4,-.3,-.2,-.1,.0,-.1,-.2],
+  function: [.1,.0,-.1,.0,.1,-.1,.2,.1,.0,-.1,.0,.1,-.1,.0,.1,.0,-.1,.1,.0,.1,-.1,.0,.1,-.1,.0,.1,.0,-.1,.1,.0,.1,-.1],
+};
+
+// Cache embeddings per token text
+const embCache = {};
+
+function seededRng(seed) {
+  let s = seed;
+  return () => {
+    s = (s * 16807 + 0) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+
+function getEmbedding(word) {
+  const key = word.toLowerCase();
+  if (embCache[key]) return embCache[key];
+
+  const vocab = VOCAB[key];
+  const cluster = vocab ? vocab.cluster : 'function';
+  const basis = CLUSTER_BASIS[cluster];
+  const rng = seededRng(key.split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 1));
+
+  const vec = basis.map((b, i) => {
+    const noise = (rng() - 0.5) * 0.6;
+    return Math.max(-1, Math.min(1, b + noise));
+  });
+
+  // Normalize
+  const mag = Math.sqrt(vec.reduce((s, v) => s + v * v, 0));
+  const normalized = vec.map(v => parseFloat((v / mag).toFixed(4)));
+  embCache[key] = normalized;
+  return normalized;
+}
+
+function getTokenId(word) {
+  const key = word.toLowerCase();
+  return VOCAB[key] ? VOCAB[key].id : Math.abs(word.split('').reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 0)) % 50000 + 100;
+}
+
+// ── Tokenization (simple whitespace + punctuation split) ───────
+function tokenize(text) {
+  const tokens = [];
+  const re = /\w+|[^\w\s]/g;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    tokens.push(m[0]);
+  }
+  return tokens;
+}
+
+// Colour palette for tokens
+const TOKEN_COLORS = [
+  { bg:'#eef2ff', border:'#6d28d9', text:'#4c1d95' },
+  { bg:'#ecfdf5', border:'#059669', text:'#064e3b' },
+  { bg:'#fff7ed', border:'#ea580c', text:'#7c2d12' },
+  { bg:'#fdf4ff', border:'#a21caf', text:'#701a75' },
+  { bg:'#eff6ff', border:'#2563eb', text:'#1e3a5f' },
+];
+
+// ── State ──────────────────────────────────────────────────────
+let tokens = [];
+let activeIdx = 0;
+let compareA = 'loan';
+let compareB = 'risk';
+let activeTab = 'lookup';
+
+// ── Render token list ──────────────────────────────────────────
+function renderTokens() {
+  const text = document.getElementById('inputText').value;
+  tokens = tokenize(text);
+  document.getElementById('tokCount').textContent = `(${tokens.length})`;
+
+  const list = document.getElementById('tokenList');
+  list.innerHTML = '';
+  tokens.forEach((tok, i) => {
+    const col = TOKEN_COLORS[i % TOKEN_COLORS.length];
+    const row = document.createElement('div');
+    row.className = 'tok-row' + (i === activeIdx ? ' active' : '');
+    row.innerHTML = `
+      <span class="tok-chip" style="background:${col.bg};color:${col.text};border:1px solid ${col.border}">${tok}</span>
+      <span style="font-family:var(--font-mono);font-size:0.62rem;color:var(--color-text-muted)">→ ID</span>
+      <span class="tok-id">${getTokenId(tok)}</span>
+      <span class="tok-arrow">▶</span>
+    `;
+    row.addEventListener('click', () => {
+      activeIdx = i;
+      renderAll();
+    });
+    list.appendChild(row);
+  });
+}
+
+// ── Matrix rows ────────────────────────────────────────────────
+function renderMatrix() {
+  const rows = document.getElementById('matrixRows');
+  rows.innerHTML = '';
+
+  // Show active token + surrounding vocab context
+  const activeWord = tokens[activeIdx] || '';
+  const activeId = getTokenId(activeWord);
+
+  // Collect rows to show: active token + some vocab items
+  const shown = [];
+  const vocabKeys = Object.keys(VOCAB);
+  // Insert active token position
+  const pool = [...vocabKeys];
+  if (!pool.includes(activeWord.toLowerCase())) pool.unshift(activeWord.toLowerCase());
+
+  // Sort by token id
+  pool.sort((a, b) => getTokenId(a) - getTokenId(b));
+
+  pool.slice(0, 18).forEach(word => {
+    const id = getTokenId(word);
+    const vec = getEmbedding(word);
+    const isActive = word.toLowerCase() === activeWord.toLowerCase();
+    const col = TOKEN_COLORS[0];
+
+    const row = document.createElement('div');
+    row.className = 'matrix-row' + (isActive ? ' highlighted' : '');
+    row.innerHTML = `
+      <div class="matrix-row-id">
+        <span style="color:var(--color-text-muted);font-size:0.6rem">#${id}</span>
+        <span class="tok-label" style="background:${isActive ? '#ede9fe' : 'var(--color-surface-alt)'};color:${isActive ? '#6d28d9' : 'var(--color-text-secondary)'}">${word}</span>
+      </div>
+      <div class="matrix-mini-bars" id="mbars-${word}"></div>
+    `;
+    row.addEventListener('click', () => {
+      // find this word in current tokens or treat as single
+      const idx = tokens.findIndex(t => t.toLowerCase() === word.toLowerCase());
+      if (idx !== -1) { activeIdx = idx; renderAll(); }
+    });
+    rows.appendChild(row);
+
+    // Mini bars
+    const barContainer = row.querySelector(`#mbars-${word}`);
+    const preview = vec.slice(0, 24);
+    preview.forEach(v => {
+      const bar = document.createElement('div');
+      bar.className = 'matrix-mini-bar';
+      const pct = Math.abs(v) * 100;
+      bar.style.height = `${Math.max(2, pct * 0.24)}px`;
+      bar.style.background = v > 0 ? `rgba(16,185,129,${0.4 + Math.abs(v) * 0.6})` : `rgba(239,68,68,${0.4 + Math.abs(v) * 0.6})`;
+      barContainer.appendChild(bar);
+    });
+  });
+
+  // Update explainer
+  document.getElementById('exp-tok').textContent = `"${activeWord}"`;
+  document.getElementById('exp-id').textContent = activeId;
+  document.getElementById('exp-id2').textContent = activeId;
+}
+
+// ── Vector detail ──────────────────────────────────────────────
+function renderVector() {
+  const word = tokens[activeIdx] || '';
+  const vec = getEmbedding(word);
+  const id = getTokenId(word);
+  const col = TOKEN_COLORS[activeIdx % TOKEN_COLORS.length];
+
+  // Badge
+  const badge = document.getElementById('vecTokenBadge');
+  badge.style.background = col.bg;
+  badge.style.color = col.text;
+  badge.style.borderColor = col.border;
+  badge.textContent = `"${word}"  →  ID ${id}`;
+
+  // Array text
+  const nums = document.getElementById('vecNums');
+  nums.innerHTML = vec.map((v, i) => {
+    const cls = v > 0 ? 'pos' : 'neg';
+    return `<span class="val ${cls}">${v.toFixed(4)}</span>`;
+  }).join('<span style="color:var(--color-text-muted)">, </span>');
+
+  // Bar chart
+  const chart = document.getElementById('dimBarChart');
+  chart.innerHTML = '';
+  const dimNames = [
+    'finance','sentiment','syntax-N','syntax-V','formality','specificity',
+    'abstraction','temporal','negation','intensity','frequency','register',
+    'animacy','plurality','tense-past','tense-fut','domain-med','domain-law',
+    'domain-tech','domain-fin','polarity+','polarity−','certainty','agency',
+    'causality','quantity','comparison','modality','aspect','voice','mood','type'
+  ];
+  vec.forEach((v, i) => {
+    const row = document.createElement('div');
+    row.className = 'dim-bar-row';
+    const pct = Math.abs(v) * 50; // max 50% either side of centre
+
+    row.innerHTML = `
+      <div class="dim-bar-label">dim ${String(i).padStart(2,'0')}<br><span style="font-size:0.55rem;opacity:0.7">${dimNames[i] || ''}</span></div>
+      <div class="dim-bar-track">
+        <div class="dim-bar-center"></div>
+        <div class="dim-bar-fill ${v >= 0 ? 'pos' : 'neg'}" style="width:${pct}%"></div>
+      </div>
+      <div class="dim-bar-val">${v.toFixed(3)}</div>
+    `;
+    chart.appendChild(row);
+  });
+}
+
+// ── Compare ────────────────────────────────────────────────────
+function cosineSim(a, b) {
+  let dot = 0, ma = 0, mb = 0;
+  for (let i = 0; i < a.length; i++) { dot += a[i]*b[i]; ma += a[i]*a[i]; mb += b[i]*b[i]; }
+  return dot / (Math.sqrt(ma) * Math.sqrt(mb));
+}
+
+function renderCompare() {
+  // Word picker: pull vocab words + current tokens
+  const wordSet = new Set([...Object.keys(VOCAB), ...tokens.map(t => t.toLowerCase())].filter(w => w.length > 1));
+  const words = [...wordSet].sort();
+
+  const picker = document.getElementById('wordPicker');
+  picker.innerHTML = '';
+  words.forEach(w => {
+    const btn = document.createElement('button');
+    btn.className = 'word-btn' + (w === compareA ? ' active-a' : w === compareB ? ' active-b' : '');
+    btn.textContent = w;
+    btn.addEventListener('click', () => {
+      if (w === compareB) { compareA = w; }
+      else if (w === compareA) { compareB = w; }
+      else { compareA = w; compareB = w === compareA ? compareB : w;
+        // cycle: first click → A, second different word → B
+        if (picker.dataset.next === 'b') { compareB = w; picker.dataset.next = 'a'; }
+        else { compareA = w; picker.dataset.next = 'b'; }
+      }
+      renderCompare();
+    });
+    picker.appendChild(btn);
+  });
+  if (!picker.dataset.next) picker.dataset.next = 'b';
+
+  const vecA = getEmbedding(compareA);
+  const vecB = getEmbedding(compareB);
+  const sim = cosineSim(vecA, vecB);
+
+  document.getElementById('simScore').textContent = sim.toFixed(3);
+  document.getElementById('simScore').style.color = sim > 0.7 ? 'var(--color-emerald-dark)' : sim > 0.3 ? 'var(--page-accent)' : 'var(--color-red-dark)';
+  document.getElementById('cmpLabelA').textContent = compareA;
+  document.getElementById('cmpLabelB').textContent = compareB;
+
+  const barsA = document.getElementById('cmpBarsA');
+  const barsB = document.getElementById('cmpBarsB');
+  const mid   = document.getElementById('cmpMid');
+  barsA.innerHTML = ''; barsB.innerHTML = ''; mid.innerHTML = '';
+
+  const SHOW = 20;
+  const dimNames = ['finance','sentiment','syntax-N','syntax-V','formality','specificity',
+    'abstraction','temporal','negation','intensity','frequency','register',
+    'animacy','plurality','tense-past','tense-fut','domain-med','domain-law','domain-tech','domain-fin'];
+
+  for (let i = 0; i < SHOW; i++) {
+    const va = vecA[i], vb = vecB[i];
+    const pctA = Math.abs(va) * 100;
+    const pctB = Math.abs(vb) * 100;
+    const sameDir = (va >= 0) === (vb >= 0);
+    const overlap = Math.min(pctA, pctB);
+
+    // A bar (right-aligned)
+    const rA = document.createElement('div');
+    rA.className = 'cmp-row';
+    rA.innerHTML = `
+      <div class="cmp-label">d${i}</div>
+      <div class="cmp-track">
+        <div class="cmp-fill" style="width:${pctA}%;background:${va>=0?'var(--page-accent)':'var(--color-red-bright)'};right:0;left:auto"></div>
+      </div>`;
+    barsA.appendChild(rA);
+
+    // B bar (left-aligned)
+    const rB = document.createElement('div');
+    rB.className = 'cmp-row';
+    rB.innerHTML = `
+      <div class="cmp-label">d${i}</div>
+      <div class="cmp-track">
+        <div class="cmp-fill" style="width:${pctB}%;background:${vb>=0?'var(--color-emerald)':'var(--color-amber)'}"></div>
+      </div>`;
+    barsB.appendChild(rB);
+
+    // Middle overlap indicator
+    const mRow = document.createElement('div');
+    mRow.className = 'cmp-mid-row';
+    mRow.style.fontSize = '0.7rem';
+    mRow.textContent = sameDir && overlap > 15 ? '≈' : sameDir && overlap > 5 ? '·' : '○';
+    mRow.style.color = sameDir && overlap > 15 ? 'var(--color-emerald-dark)' : 'var(--color-text-muted)';
+    mid.appendChild(mRow);
+  }
+}
+
+// ── Tab switching ──────────────────────────────────────────────
+document.querySelectorAll('.stage-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    activeTab = btn.dataset.tab;
+    document.querySelectorAll('.stage-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.stage-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(`panel-${activeTab}`).classList.add('active');
+
+    // Update pipeline highlight
+    const tabStep = { lookup: 2, vector: 3, compare: 3 };
+    for (let i = 0; i < 5; i++) {
+      document.getElementById(`pipe${i}`).classList.toggle('active-step', i === tabStep[activeTab]);
+    }
+  });
+});
+
+// ── Main render ────────────────────────────────────────────────
+function renderAll() {
+  renderTokens();
+  renderMatrix();
+  renderVector();
+  renderCompare();
+}
+
+// ── Input listener ─────────────────────────────────────────────
+let debounce;
+document.getElementById('inputText').addEventListener('input', () => {
+  clearTimeout(debounce);
+  debounce = setTimeout(() => {
+    activeIdx = 0;
+    renderAll();
+  }, 200);
+});
+
+// ── Init ───────────────────────────────────────────────────────
+renderAll();
+</script>
+</body>
+</html>
