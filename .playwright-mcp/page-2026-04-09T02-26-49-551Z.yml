@@ -1,0 +1,262 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - link "← Demos" [ref=e3] [cursor=pointer]:
+      - /url: index.html
+    - generic [ref=e4]: /
+    - generic [ref=e5]: Token → Embedding → Dimensions
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - heading "Token → Embedding → Dimensions" [level=1] [ref=e8]
+      - generic [ref=e9]: Click any token to inspect its vector
+    - generic [ref=e10]:
+      - generic [ref=e11]:
+        - generic [ref=e12]:
+          - generic [ref=e13]: Input text
+          - textbox "Type any phrase…" [ref=e14]: The loan default risk is high
+        - generic [ref=e15]:
+          - generic [ref=e16]: Tokens (6)
+          - generic [ref=e17]:
+            - generic [ref=e619] [cursor=pointer]:
+              - generic [ref=e620]: The
+              - generic [ref=e621]: → ID
+              - generic [ref=e622]: "464"
+              - generic [ref=e623]: ▶
+            - generic [ref=e624] [cursor=pointer]:
+              - generic [ref=e625]: loan
+              - generic [ref=e626]: → ID
+              - generic [ref=e627]: "28289"
+              - generic [ref=e628]: ▶
+            - generic [ref=e629] [cursor=pointer]:
+              - generic [ref=e630]: default
+              - generic [ref=e631]: → ID
+              - generic [ref=e632]: "8244"
+              - generic [ref=e633]: ▶
+            - generic [ref=e634] [cursor=pointer]:
+              - generic [ref=e635]: risk
+              - generic [ref=e636]: → ID
+              - generic [ref=e637]: "3643"
+              - generic [ref=e638]: ▶
+            - generic [ref=e639] [cursor=pointer]:
+              - generic [ref=e640]: is
+              - generic [ref=e641]: → ID
+              - generic [ref=e642]: "318"
+              - generic [ref=e643]: ▶
+            - generic [ref=e644] [cursor=pointer]:
+              - generic [ref=e645]: high
+              - generic [ref=e646]: → ID
+              - generic [ref=e647]: "1029"
+              - generic [ref=e648]: ▶
+      - generic [ref=e48]:
+        - generic [ref=e49]:
+          - button "① Lookup Table" [ref=e50] [cursor=pointer]
+          - button "② Vector Numbers" [ref=e51] [cursor=pointer]
+          - button "③ Compare Words" [ref=e52] [cursor=pointer]
+        - generic [ref=e1171]:
+          - generic [ref=e1172]:
+            - generic [ref=e1173]: "\"loan\" → ID 28289"
+            - generic [ref=e1174]: 32 dimensions
+            - generic [ref=e1175]: Select a token on the left to inspect
+          - generic [ref=e1176]:
+            - text: "["
+            - generic [ref=e1177]: 0.1956, 0.2183, 0.1746, 0.0529, 0.1553, 0.2962, 0.0609, 0.0426, 0.0069, 0.0369, -0.0411, -0.0926, 0.2043, 0.3383, 0.1780, 0.1139, 0.1087, 0.2369, -0.0154, 0.0919, -0.0882, -0.1021, 0.2389, 0.2096, 0.1904, 0.1015, 0.0483, 0.2152, 0.3192, 0.3428, 0.1611, 0.1204
+            - text: "]"
+          - generic [ref=e1178]:
+            - generic [ref=e1179]:
+              - generic [ref=e1180]:
+                - text: dim 00
+                - text: finance
+              - generic [ref=e1184]: "0.196"
+            - generic [ref=e1185]:
+              - generic [ref=e1186]:
+                - text: dim 01
+                - text: sentiment
+              - generic [ref=e1190]: "0.218"
+            - generic [ref=e1191]:
+              - generic [ref=e1192]:
+                - text: dim 02
+                - text: syntax-N
+              - generic [ref=e1196]: "0.175"
+            - generic [ref=e1197]:
+              - generic [ref=e1198]:
+                - text: dim 03
+                - text: syntax-V
+              - generic [ref=e1202]: "0.053"
+            - generic [ref=e1203]:
+              - generic [ref=e1204]:
+                - text: dim 04
+                - text: formality
+              - generic [ref=e1208]: "0.155"
+            - generic [ref=e1209]:
+              - generic [ref=e1210]:
+                - text: dim 05
+                - text: specificity
+              - generic [ref=e1214]: "0.296"
+            - generic [ref=e1215]:
+              - generic [ref=e1216]:
+                - text: dim 06
+                - text: abstraction
+              - generic [ref=e1220]: "0.061"
+            - generic [ref=e1221]:
+              - generic [ref=e1222]:
+                - text: dim 07
+                - text: temporal
+              - generic [ref=e1226]: "0.043"
+            - generic [ref=e1227]:
+              - generic [ref=e1228]:
+                - text: dim 08
+                - text: negation
+              - generic [ref=e1232]: "0.007"
+            - generic [ref=e1233]:
+              - generic [ref=e1234]:
+                - text: dim 09
+                - text: intensity
+              - generic [ref=e1238]: "0.037"
+            - generic [ref=e1239]:
+              - generic [ref=e1240]:
+                - text: dim 10
+                - text: frequency
+              - generic [ref=e1244]: "-0.041"
+            - generic [ref=e1245]:
+              - generic [ref=e1246]:
+                - text: dim 11
+                - text: register
+              - generic [ref=e1250]: "-0.093"
+            - generic [ref=e1251]:
+              - generic [ref=e1252]:
+                - text: dim 12
+                - text: animacy
+              - generic [ref=e1256]: "0.204"
+            - generic [ref=e1257]:
+              - generic [ref=e1258]:
+                - text: dim 13
+                - text: plurality
+              - generic [ref=e1262]: "0.338"
+            - generic [ref=e1263]:
+              - generic [ref=e1264]:
+                - text: dim 14
+                - text: tense-past
+              - generic [ref=e1268]: "0.178"
+            - generic [ref=e1269]:
+              - generic [ref=e1270]:
+                - text: dim 15
+                - text: tense-fut
+              - generic [ref=e1274]: "0.114"
+            - generic [ref=e1275]:
+              - generic [ref=e1276]:
+                - text: dim 16
+                - text: domain-med
+              - generic [ref=e1280]: "0.109"
+            - generic [ref=e1281]:
+              - generic [ref=e1282]:
+                - text: dim 17
+                - text: domain-law
+              - generic [ref=e1286]: "0.237"
+            - generic [ref=e1287]:
+              - generic [ref=e1288]:
+                - text: dim 18
+                - text: domain-tech
+              - generic [ref=e1292]: "-0.015"
+            - generic [ref=e1293]:
+              - generic [ref=e1294]:
+                - text: dim 19
+                - text: domain-fin
+              - generic [ref=e1298]: "0.092"
+            - generic [ref=e1299]:
+              - generic [ref=e1300]:
+                - text: dim 20
+                - text: polarity+
+              - generic [ref=e1304]: "-0.088"
+            - generic [ref=e1305]:
+              - generic [ref=e1306]:
+                - text: dim 21
+                - text: polarity−
+              - generic [ref=e1310]: "-0.102"
+            - generic [ref=e1311]:
+              - generic [ref=e1312]:
+                - text: dim 22
+                - text: certainty
+              - generic [ref=e1316]: "0.239"
+            - generic [ref=e1317]:
+              - generic [ref=e1318]:
+                - text: dim 23
+                - text: agency
+              - generic [ref=e1322]: "0.210"
+            - generic [ref=e1323]:
+              - generic [ref=e1324]:
+                - text: dim 24
+                - text: causality
+              - generic [ref=e1328]: "0.190"
+            - generic [ref=e1329]:
+              - generic [ref=e1330]:
+                - text: dim 25
+                - text: quantity
+              - generic [ref=e1334]: "0.102"
+            - generic [ref=e1335]:
+              - generic [ref=e1336]:
+                - text: dim 26
+                - text: comparison
+              - generic [ref=e1340]: "0.048"
+            - generic [ref=e1341]:
+              - generic [ref=e1342]:
+                - text: dim 27
+                - text: modality
+              - generic [ref=e1346]: "0.215"
+            - generic [ref=e1347]:
+              - generic [ref=e1348]:
+                - text: dim 28
+                - text: aspect
+              - generic [ref=e1352]: "0.319"
+            - generic [ref=e1353]:
+              - generic [ref=e1354]:
+                - text: dim 29
+                - text: voice
+              - generic [ref=e1358]: "0.343"
+            - generic [ref=e1359]:
+              - generic [ref=e1360]:
+                - text: dim 30
+                - text: mood
+              - generic [ref=e1364]: "0.161"
+            - generic [ref=e1365]:
+              - generic [ref=e1366]:
+                - text: dim 31
+                - text: type
+              - generic [ref=e1370]: "0.120"
+      - generic [ref=e584]:
+        - generic [ref=e585]: How it works
+        - generic [ref=e586]:
+          - generic [ref=e587]:
+            - generic [ref=e588]: ✏️
+            - text: Text typed
+          - generic [ref=e589]: ↓
+          - generic [ref=e590]:
+            - generic [ref=e591]: ✂️
+            - text: Tokenized → IDs
+          - generic [ref=e592]: ↓
+          - generic [ref=e593]:
+            - generic [ref=e594]: 📋
+            - text: Matrix row lookup
+          - generic [ref=e595]: ↓
+          - generic [ref=e596]:
+            - generic [ref=e597]: 📊
+            - text: 32-dim float vector
+          - generic [ref=e598]: ↓
+          - generic [ref=e599]:
+            - generic [ref=e600]: 🔢
+            - text: Attention layers use it
+        - generic [ref=e601]:
+          - heading "Why floats, not integers?" [level=4] [ref=e602]: Why floats, not integers?
+          - paragraph [ref=e604]:
+            - text: Token IDs are integers (like
+            - code [ref=e605]: "1234"
+            - text: ), but the model can't do math with them directly —
+            - code [ref=e606]: 1234 + 1 = 1235
+            - text: is meaningless. Embeddings convert each ID into a dense float vector the network can do linear algebra on.
+        - generic [ref=e607]:
+          - heading "What do dimensions encode?" [level=4] [ref=e608]: What do dimensions encode?
+          - paragraph [ref=e610]: "Dimensions are not hand-labelled features. They emerge from training. Roughly: some encode syntax (noun vs verb), others encode sentiment, domain (finance vs medicine), tense, formality. No single dimension = one concept."
+        - generic [ref=e611]:
+          - heading "Same word, different context?" [level=4] [ref=e612]: Same word, different context?
+          - paragraph [ref=e614]: These are static embeddings (one vector per token regardless of context). Transformer attention layers then blend them based on surrounding tokens — so "bank" (river) vs "bank" (finance) get different final representations.
+        - generic [ref=e615]:
+          - heading "Similarity = shared dimensions" [level=4] [ref=e616]: Similarity = shared dimensions
+          - paragraph [ref=e618]: When two words share high values in similar dimensions, cosine similarity is high. The Compare tab shows this dimension-by-dimension — look for bars that move together.

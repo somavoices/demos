@@ -1,0 +1,154 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - link "← Demos" [ref=e3] [cursor=pointer]:
+      - /url: index.html
+    - generic [ref=e4]: /
+    - generic [ref=e5]: Token → Embedding → Dimensions
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - heading "Token → Embedding → Dimensions" [level=1] [ref=e8]
+      - generic [ref=e9]: Click any token to inspect its vector
+    - generic [ref=e10]:
+      - generic [ref=e11]:
+        - generic [ref=e12]:
+          - generic [ref=e13]: Input text
+          - textbox "Type any phrase…" [ref=e14]: The loan default risk is high
+        - generic [ref=e15]:
+          - generic [ref=e16]: Tokens (6)
+          - generic [ref=e17]:
+            - generic [ref=e619] [cursor=pointer]:
+              - generic [ref=e620]: The
+              - generic [ref=e621]: → ID
+              - generic [ref=e622]: "464"
+              - generic [ref=e623]: ▶
+            - generic [ref=e624] [cursor=pointer]:
+              - generic [ref=e625]: loan
+              - generic [ref=e626]: → ID
+              - generic [ref=e627]: "28289"
+              - generic [ref=e628]: ▶
+            - generic [ref=e629] [cursor=pointer]:
+              - generic [ref=e630]: default
+              - generic [ref=e631]: → ID
+              - generic [ref=e632]: "8244"
+              - generic [ref=e633]: ▶
+            - generic [ref=e634] [cursor=pointer]:
+              - generic [ref=e635]: risk
+              - generic [ref=e636]: → ID
+              - generic [ref=e637]: "3643"
+              - generic [ref=e638]: ▶
+            - generic [ref=e639] [cursor=pointer]:
+              - generic [ref=e640]: is
+              - generic [ref=e641]: → ID
+              - generic [ref=e642]: "318"
+              - generic [ref=e643]: ▶
+            - generic [ref=e644] [cursor=pointer]:
+              - generic [ref=e645]: high
+              - generic [ref=e646]: → ID
+              - generic [ref=e647]: "1029"
+              - generic [ref=e648]: ▶
+      - generic [ref=e48]:
+        - generic [ref=e49]:
+          - button "① Lookup Table" [ref=e50] [cursor=pointer]
+          - button "② Vector Numbers" [ref=e51] [cursor=pointer]
+          - button "③ Compare Words" [ref=e52] [cursor=pointer]
+        - generic [ref=e54]:
+          - generic [ref=e55]: Every model has an embedding matrix — a giant table with one row per token ID. When the model sees token "loan" (ID 28289), it reads row 28289 from this table and gets back a vector of floats — one number per dimension. Click a token on the left to highlight its row.
+          - generic [ref=e56]:
+            - generic [ref=e57]:
+              - generic [ref=e58]: Token ID / Text
+              - generic [ref=e59]: Embedding vector (first 24 dims shown as bars)
+            - generic [ref=e60]:
+              - generic [ref=e650] [cursor=pointer]:
+                - generic [ref=e651]: "#257"
+                - generic [ref=e652]: a
+              - generic [ref=e679] [cursor=pointer]:
+                - generic [ref=e680]: "#284"
+                - generic [ref=e681]: to
+              - generic [ref=e708] [cursor=pointer]:
+                - generic [ref=e709]: "#286"
+                - generic [ref=e710]: of
+              - generic [ref=e737] [cursor=pointer]:
+                - generic [ref=e738]: "#287"
+                - generic [ref=e739]: in
+              - generic [ref=e766] [cursor=pointer]:
+                - generic [ref=e767]: "#290"
+                - generic [ref=e768]: and
+              - generic [ref=e795] [cursor=pointer]:
+                - generic [ref=e796]: "#318"
+                - generic [ref=e797]: is
+              - generic [ref=e824] [cursor=pointer]:
+                - generic [ref=e825]: "#464"
+                - generic [ref=e826]: the
+              - generic [ref=e853] [cursor=pointer]:
+                - generic [ref=e854]: "#922"
+                - generic [ref=e855]: good
+              - generic [ref=e882] [cursor=pointer]:
+                - generic [ref=e883]: "#1029"
+                - generic [ref=e884]: high
+              - generic [ref=e911] [cursor=pointer]:
+                - generic [ref=e912]: "#1393"
+                - generic [ref=e913]: interest
+              - generic [ref=e940] [cursor=pointer]:
+                - generic [ref=e941]: "#2107"
+                - generic [ref=e942]: great
+              - generic [ref=e969] [cursor=pointer]:
+                - generic [ref=e970]: "#2238"
+                - generic [ref=e971]: poor
+              - generic [ref=e998] [cursor=pointer]:
+                - generic [ref=e999]: "#2587"
+                - generic [ref=e1000]: low
+              - generic [ref=e1027] [cursor=pointer]:
+                - generic [ref=e1028]: "#3331"
+                - generic [ref=e1029]: bank
+              - generic [ref=e1056] [cursor=pointer]:
+                - generic [ref=e1057]: "#3460"
+                - generic [ref=e1058]: bad
+              - generic [ref=e1085] [cursor=pointer]:
+                - generic [ref=e1086]: "#3643"
+                - generic [ref=e1087]: risk
+              - generic [ref=e1114] [cursor=pointer]:
+                - generic [ref=e1115]: "#5979"
+                - generic [ref=e1116]: credit
+              - generic [ref=e1143] [cursor=pointer]:
+                - generic [ref=e1144]: "#8244"
+                - generic [ref=e1145]: default
+          - generic [ref=e583]: "Real models: GPT-2 uses 768 dims · GPT-3 uses 12,288 dims · Claude / GPT-4 class models use ~8,000–12,000+ dims. This demo uses 32 dimensions with plausible semantic structure for clarity."
+      - generic [ref=e584]:
+        - generic [ref=e585]: How it works
+        - generic [ref=e586]:
+          - generic [ref=e587]:
+            - generic [ref=e588]: ✏️
+            - text: Text typed
+          - generic [ref=e589]: ↓
+          - generic [ref=e590]:
+            - generic [ref=e591]: ✂️
+            - text: Tokenized → IDs
+          - generic [ref=e592]: ↓
+          - generic [ref=e593]:
+            - generic [ref=e594]: 📋
+            - text: Matrix row lookup
+          - generic [ref=e595]: ↓
+          - generic [ref=e596]:
+            - generic [ref=e597]: 📊
+            - text: 32-dim float vector
+          - generic [ref=e598]: ↓
+          - generic [ref=e599]:
+            - generic [ref=e600]: 🔢
+            - text: Attention layers use it
+        - generic [ref=e601]:
+          - heading "Why floats, not integers?" [level=4] [ref=e602]: Why floats, not integers?
+          - paragraph [ref=e604]:
+            - text: Token IDs are integers (like
+            - code [ref=e605]: "1234"
+            - text: ), but the model can't do math with them directly —
+            - code [ref=e606]: 1234 + 1 = 1235
+            - text: is meaningless. Embeddings convert each ID into a dense float vector the network can do linear algebra on.
+        - generic [ref=e607]:
+          - heading "What do dimensions encode?" [level=4] [ref=e608]: What do dimensions encode?
+          - paragraph [ref=e610]: "Dimensions are not hand-labelled features. They emerge from training. Roughly: some encode syntax (noun vs verb), others encode sentiment, domain (finance vs medicine), tense, formality. No single dimension = one concept."
+        - generic [ref=e611]:
+          - heading "Same word, different context?" [level=4] [ref=e612]: Same word, different context?
+          - paragraph [ref=e614]: These are static embeddings (one vector per token regardless of context). Transformer attention layers then blend them based on surrounding tokens — so "bank" (river) vs "bank" (finance) get different final representations.
+        - generic [ref=e615]:
+          - heading "Similarity = shared dimensions" [level=4] [ref=e616]: Similarity = shared dimensions
+          - paragraph [ref=e618]: When two words share high values in similar dimensions, cosine similarity is high. The Compare tab shows this dimension-by-dimension — look for bars that move together.

@@ -1,0 +1,190 @@
+- generic [ref=e1]:
+  - navigation [ref=e2]:
+    - link "← Demos" [ref=e3] [cursor=pointer]:
+      - /url: index.html
+    - generic [ref=e4]: /
+    - generic [ref=e5]: Token → Embedding → Dimensions
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - heading "Token → Embedding → Dimensions" [level=1] [ref=e8]
+      - generic [ref=e9]: Click any token to inspect its vector
+    - generic [ref=e10]:
+      - generic [ref=e11]:
+        - generic [ref=e12]:
+          - generic [ref=e13]: Input text
+          - textbox "Type any phrase…" [ref=e14]: The loan default risk is high
+        - generic [ref=e15]:
+          - generic [ref=e16]: Tokens (6)
+          - generic [ref=e17]:
+            - generic [ref=e619] [cursor=pointer]:
+              - generic [ref=e620]: The
+              - generic [ref=e621]: → ID
+              - generic [ref=e622]: "464"
+              - generic [ref=e623]: ▶
+            - generic [ref=e624] [cursor=pointer]:
+              - generic [ref=e625]: loan
+              - generic [ref=e626]: → ID
+              - generic [ref=e627]: "28289"
+              - generic [ref=e628]: ▶
+            - generic [ref=e629] [cursor=pointer]:
+              - generic [ref=e630]: default
+              - generic [ref=e631]: → ID
+              - generic [ref=e632]: "8244"
+              - generic [ref=e633]: ▶
+            - generic [ref=e634] [cursor=pointer]:
+              - generic [ref=e635]: risk
+              - generic [ref=e636]: → ID
+              - generic [ref=e637]: "3643"
+              - generic [ref=e638]: ▶
+            - generic [ref=e639] [cursor=pointer]:
+              - generic [ref=e640]: is
+              - generic [ref=e641]: → ID
+              - generic [ref=e642]: "318"
+              - generic [ref=e643]: ▶
+            - generic [ref=e644] [cursor=pointer]:
+              - generic [ref=e645]: high
+              - generic [ref=e646]: → ID
+              - generic [ref=e647]: "1029"
+              - generic [ref=e648]: ▶
+      - generic [ref=e48]:
+        - generic [ref=e49]:
+          - button "① Lookup Table" [ref=e50] [cursor=pointer]
+          - button "② Vector Numbers" [ref=e51] [cursor=pointer]
+          - button "③ Compare Words" [active] [ref=e52] [cursor=pointer]
+        - generic [ref=e1371]:
+          - generic [ref=e1372]: Pick two words to compare
+          - generic [ref=e1373]:
+            - button "and" [ref=e1374] [cursor=pointer]
+            - button "bad" [ref=e1375] [cursor=pointer]
+            - button "bank" [ref=e1376] [cursor=pointer]
+            - button "credit" [ref=e1377] [cursor=pointer]
+            - button "debt" [ref=e1378] [cursor=pointer]
+            - button "default" [ref=e1379] [cursor=pointer]
+            - button "fraud" [ref=e1380] [cursor=pointer]
+            - button "good" [ref=e1381] [cursor=pointer]
+            - button "great" [ref=e1382] [cursor=pointer]
+            - button "high" [ref=e1383] [cursor=pointer]
+            - button "in" [ref=e1384] [cursor=pointer]
+            - button "interest" [ref=e1385] [cursor=pointer]
+            - button "is" [ref=e1386] [cursor=pointer]
+            - button "loan" [ref=e1387] [cursor=pointer]
+            - button "low" [ref=e1388] [cursor=pointer]
+            - button "mortgage" [ref=e1389] [cursor=pointer]
+            - button "of" [ref=e1390] [cursor=pointer]
+            - button "payment" [ref=e1391] [cursor=pointer]
+            - button "poor" [ref=e1392] [cursor=pointer]
+            - button "risk" [ref=e1393] [cursor=pointer]
+            - button "the" [ref=e1394] [cursor=pointer]
+            - button "to" [ref=e1395] [cursor=pointer]
+          - generic [ref=e1396]:
+            - generic [ref=e1397]: "0.910"
+            - generic [ref=e1398]: COSINE SIMILARITY
+          - generic [ref=e1399]:
+            - generic [ref=e1400]:
+              - generic [ref=e1402]: loan
+              - generic [ref=e1403]:
+                - generic [ref=e1405]: d0
+                - generic [ref=e1409]: d1
+                - generic [ref=e1413]: d2
+                - generic [ref=e1417]: d3
+                - generic [ref=e1421]: d4
+                - generic [ref=e1425]: d5
+                - generic [ref=e1429]: d6
+                - generic [ref=e1433]: d7
+                - generic [ref=e1437]: d8
+                - generic [ref=e1441]: d9
+                - generic [ref=e1445]: d10
+                - generic [ref=e1449]: d11
+                - generic [ref=e1453]: d12
+                - generic [ref=e1457]: d13
+                - generic [ref=e1461]: d14
+                - generic [ref=e1465]: d15
+                - generic [ref=e1469]: d16
+                - generic [ref=e1473]: d17
+                - generic [ref=e1477]: d18
+                - generic [ref=e1481]: d19
+            - generic [ref=e1484]:
+              - generic [ref=e1485]: overlap
+              - generic [ref=e1486]:
+                - generic [ref=e1487]: ≈
+                - generic [ref=e1488]: ≈
+                - generic [ref=e1489]: ≈
+                - generic [ref=e1490]: ·
+                - generic [ref=e1491]: ·
+                - generic [ref=e1492]: ≈
+                - generic [ref=e1493]: ○
+                - generic [ref=e1494]: ○
+                - generic [ref=e1495]: ○
+                - generic [ref=e1496]: ○
+                - generic [ref=e1497]: ○
+                - generic [ref=e1498]: ·
+                - generic [ref=e1499]: ≈
+                - generic [ref=e1500]: ≈
+                - generic [ref=e1501]: ≈
+                - generic [ref=e1502]: ·
+                - generic [ref=e1503]: ·
+                - generic [ref=e1504]: ≈
+                - generic [ref=e1505]: ○
+                - generic [ref=e1506]: ○
+            - generic [ref=e1507]:
+              - generic [ref=e1509]: risk
+              - generic [ref=e1510]:
+                - generic [ref=e1512]: d0
+                - generic [ref=e1516]: d1
+                - generic [ref=e1520]: d2
+                - generic [ref=e1524]: d3
+                - generic [ref=e1528]: d4
+                - generic [ref=e1532]: d5
+                - generic [ref=e1536]: d6
+                - generic [ref=e1540]: d7
+                - generic [ref=e1544]: d8
+                - generic [ref=e1548]: d9
+                - generic [ref=e1552]: d10
+                - generic [ref=e1556]: d11
+                - generic [ref=e1560]: d12
+                - generic [ref=e1564]: d13
+                - generic [ref=e1568]: d14
+                - generic [ref=e1572]: d15
+                - generic [ref=e1576]: d16
+                - generic [ref=e1580]: d17
+                - generic [ref=e1584]: d18
+                - generic [ref=e1588]: d19
+      - generic [ref=e584]:
+        - generic [ref=e585]: How it works
+        - generic [ref=e586]:
+          - generic [ref=e587]:
+            - generic [ref=e588]: ✏️
+            - text: Text typed
+          - generic [ref=e589]: ↓
+          - generic [ref=e590]:
+            - generic [ref=e591]: ✂️
+            - text: Tokenized → IDs
+          - generic [ref=e592]: ↓
+          - generic [ref=e593]:
+            - generic [ref=e594]: 📋
+            - text: Matrix row lookup
+          - generic [ref=e595]: ↓
+          - generic [ref=e596]:
+            - generic [ref=e597]: 📊
+            - text: 32-dim float vector
+          - generic [ref=e598]: ↓
+          - generic [ref=e599]:
+            - generic [ref=e600]: 🔢
+            - text: Attention layers use it
+        - generic [ref=e601]:
+          - heading "Why floats, not integers?" [level=4] [ref=e602]: Why floats, not integers?
+          - paragraph [ref=e604]:
+            - text: Token IDs are integers (like
+            - code [ref=e605]: "1234"
+            - text: ), but the model can't do math with them directly —
+            - code [ref=e606]: 1234 + 1 = 1235
+            - text: is meaningless. Embeddings convert each ID into a dense float vector the network can do linear algebra on.
+        - generic [ref=e607]:
+          - heading "What do dimensions encode?" [level=4] [ref=e608]: What do dimensions encode?
+          - paragraph [ref=e610]: "Dimensions are not hand-labelled features. They emerge from training. Roughly: some encode syntax (noun vs verb), others encode sentiment, domain (finance vs medicine), tense, formality. No single dimension = one concept."
+        - generic [ref=e611]:
+          - heading "Same word, different context?" [level=4] [ref=e612]: Same word, different context?
+          - paragraph [ref=e614]: These are static embeddings (one vector per token regardless of context). Transformer attention layers then blend them based on surrounding tokens — so "bank" (river) vs "bank" (finance) get different final representations.
+        - generic [ref=e615]:
+          - heading "Similarity = shared dimensions" [level=4] [ref=e616]: Similarity = shared dimensions
+          - paragraph [ref=e618]: When two words share high values in similar dimensions, cosine similarity is high. The Compare tab shows this dimension-by-dimension — look for bars that move together.

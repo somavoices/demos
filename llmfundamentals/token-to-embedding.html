@@ -130,7 +130,7 @@ textarea:focus { border-color:var(--page-accent); }
   color:var(--color-text-muted); letter-spacing:1px;
   padding:0.5rem 0.75rem;
 }
-.matrix-rows { overflow-y:auto; max-height:320px; }
+.matrix-rows { overflow-y:auto; max-height:400px; }
 .matrix-row {
   display:grid; grid-template-columns:90px 1fr;
   padding:0.4rem 0.75rem; border-bottom:1px solid var(--color-border-light);
@@ -241,17 +241,24 @@ textarea:focus { border-color:var(--page-accent); }
 }
 .compare-bars { display:flex; flex-direction:column; gap:4px; }
 .cmp-row {
-  display:grid; grid-template-columns:60px 1fr;
-  align-items:center; gap:0.4rem;
+  display:grid; align-items:center; gap:0.4rem;
 }
-.cmp-label { font-family:var(--font-mono); font-size:0.6rem; color:var(--color-text-muted); text-align:right; }
+.cmp-row-a { grid-template-columns:1fr 40px; }
+.cmp-row-b { grid-template-columns:40px 1fr; }
+.cmp-label { font-family:var(--font-mono); font-size:0.6rem; color:var(--color-text-muted); }
+.cmp-label-a { text-align:right; }
+.cmp-label-b { text-align:left; }
 .cmp-track {
   background:var(--color-border-light); border-radius:100px; height:8px;
-  position:relative;
+  position:relative; overflow:hidden;
 }
 .cmp-fill {
-  position:absolute; height:100%; border-radius:100px; transition:all 0.4s ease;
+  position:absolute; top:0; height:100%; border-radius:100px; transition:all 0.4s ease;
 }
+/* Word A: bars grow from right edge leftward */
+.cmp-fill-a { right:0; }
+/* Word B: bars grow from left edge rightward */
+.cmp-fill-b { left:0; }
 .cmp-mid-col { display:flex; flex-direction:column; gap:4px; padding-top:0; }
 .cmp-mid-row {
   height:8px; display:flex; align-items:center; justify-content:center;
@@ -635,17 +642,22 @@ function renderMatrix() {
   const activeWord = tokens[activeIdx] || '';
   const activeId = getTokenId(activeWord);
 
-  // Collect rows to show: active token + some vocab items
-  const shown = [];
+  // Always show active word + a fixed set of vocab words for context
   const vocabKeys = Object.keys(VOCAB);
-  // Insert active token position
-  const pool = [...vocabKeys];
-  if (!pool.includes(activeWord.toLowerCase())) pool.unshift(activeWord.toLowerCase());
+  const activeKey = activeWord.toLowerCase();
+
+  // Build pool: fixed vocab + active word if not already in it
+  const poolSet = new Set(vocabKeys);
+  poolSet.add(activeKey);
+  const pool = [...poolSet];
 
   // Sort by token id
   pool.sort((a, b) => getTokenId(a) - getTokenId(b));
 
-  pool.slice(0, 18).forEach(word => {
+  // Show all words in the pool (sorted by ID), active word will be highlighted
+  const visiblePool = pool;
+
+  visiblePool.forEach(word => {
     const id = getTokenId(word);
     const vec = getEmbedding(word);
     const isActive = word.toLowerCase() === activeWord.toLowerCase();
@@ -684,6 +696,10 @@ function renderMatrix() {
   document.getElementById('exp-tok').textContent = `"${activeWord}"`;
   document.getElementById('exp-id').textContent = activeId;
   document.getElementById('exp-id2').textContent = activeId;
+
+  // Scroll highlighted row into view
+  const highlighted = rows.querySelector('.highlighted');
+  if (highlighted) highlighted.scrollIntoView({ block: 'center', behavior: 'smooth' });
 }
 
 // ── Vector detail ──────────────────────────────────────────────
@@ -792,23 +808,23 @@ function renderCompare() {
     const sameDir = (va >= 0) === (vb >= 0);
     const overlap = Math.min(pctA, pctB);
 
-    // A bar (right-aligned)
+    // A bar (grows from right → left, label on right)
     const rA = document.createElement('div');
-    rA.className = 'cmp-row';
+    rA.className = 'cmp-row cmp-row-a';
     rA.innerHTML = `
-      <div class="cmp-label">d${i}</div>
       <div class="cmp-track">
-        <div class="cmp-fill" style="width:${pctA}%;background:${va>=0?'var(--page-accent)':'var(--color-red-bright)'};right:0;left:auto"></div>
-      </div>`;
+        <div class="cmp-fill cmp-fill-a" style="width:${pctA}%;background:${va>=0?'var(--page-accent)':'var(--color-red-bright)'}"></div>
+      </div>
+      <div class="cmp-label cmp-label-a">d${i}</div>`;
     barsA.appendChild(rA);
 
-    // B bar (left-aligned)
+    // B bar (grows from left → right, label on left)
     const rB = document.createElement('div');
-    rB.className = 'cmp-row';
+    rB.className = 'cmp-row cmp-row-b';
     rB.innerHTML = `
-      <div class="cmp-label">d${i}</div>
+      <div class="cmp-label cmp-label-b">d${i}</div>
       <div class="cmp-track">
-        <div class="cmp-fill" style="width:${pctB}%;background:${vb>=0?'var(--color-emerald)':'var(--color-amber)'}"></div>
+        <div class="cmp-fill cmp-fill-b" style="width:${pctB}%;background:${vb>=0?'var(--color-emerald)':'var(--color-amber)'}"></div>
       </div>`;
     barsB.appendChild(rB);
 
