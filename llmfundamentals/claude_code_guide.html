@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code — How It Works</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Mono:wght@300;400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#1c1917;--paper:#faf9f6;--warm:#f5f0e8;--warm2:#ede8dc;
+  --accent:#1a6e3c;--accent2:#1d5fa8;--accent3:#7c3ab8;
+  --muted:#7a7570;--border:#ddd8ce;
+  --ph1:#1a6e3c;--ph2:#1d5fa8;--ph3:#7c3ab8;--ph4:#a06010;
+  --cb-bg:#f0ece3;--cb-border:#ddd8ce;
+  --cb-fg:#2a2520;--cb-hi:#0a5a2a;--cb-ok:#1a4a80;--cb-err:#8c1a1a;--cb-dim:#9a9080;--cb-warn:#7a5000;
+  --hero-bg:#0d1a12;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:'DM Sans',sans-serif;font-weight:300;line-height:1.7;font-size:17px;overflow-x:hidden}
+
+.hero{min-height:100vh;display:grid;grid-template-rows:1fr auto;position:relative;overflow:hidden;background:var(--hero-bg)}
+.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 15% 50%,#0a2e18 0%,transparent 60%),radial-gradient(ellipse 60% 80% at 85% 25%,#0a1a2e 0%,transparent 60%),radial-gradient(ellipse 50% 50% at 55% 80%,#1a1a0e 0%,transparent 50%)}
+.hero-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:56px 56px;mask-image:radial-gradient(ellipse 85% 75% at 50% 50%,black 40%,transparent 100%)}
+.hero-content{position:relative;z-index:2;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:80px 40px 60px;gap:22px}
+.hero-eyebrow{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.25em;text-transform:uppercase;color:#5ae0a0;opacity:0;animation:fadeUp .8s .2s forwards}
+.hero-title{font-family:'Cormorant Garamond',serif;font-size:clamp(40px,7vw,86px);font-weight:300;line-height:1.05;color:#f8f6f2;letter-spacing:-.02em;max-width:820px;opacity:0;animation:fadeUp .9s .35s forwards}
+.hero-title em{font-style:italic;color:#5ae0a0}
+.hero-sub{font-size:16px;font-weight:300;color:rgba(248,246,242,.5);max-width:500px;line-height:1.75;opacity:0;animation:fadeUp .9s .5s forwards}
+.hero-pills{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;opacity:0;animation:fadeUp .9s .65s forwards}
+.hero-pill{font-family:'DM Mono',monospace;font-size:12px;color:#7ae8c0;background:rgba(90,224,160,.08);border:1px solid rgba(90,224,160,.18);border-radius:6px;padding:8px 16px}
+.scroll-hint{position:relative;z-index:2;padding:0 0 44px;text-align:center;color:rgba(248,246,242,.2);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.15em;display:flex;flex-direction:column;align-items:center;gap:10px;opacity:0;animation:fadeUp .9s 1s forwards}
+.scroll-line{width:1px;height:44px;background:linear-gradient(transparent,rgba(248,246,242,.2));animation:spulse 2.2s 1.5s infinite}
+
+.phase-nav{position:sticky;top:0;z-index:100;background:rgba(250,249,246,.93);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);padding:0 40px;display:flex;gap:0;overflow-x:auto;scrollbar-width:none}
+.phase-nav::-webkit-scrollbar{display:none}
+.phase-tab{flex-shrink:0;padding:15px 17px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-decoration:none;border-bottom:2px solid transparent;transition:color .2s,border-color .2s;white-space:nowrap}
+.pt1.active,.pt1:hover{color:var(--ph1);border-color:var(--ph1)}
+.pt2.active,.pt2:hover{color:var(--ph2);border-color:var(--ph2)}
+.pt3.active,.pt3:hover{color:var(--ph3);border-color:var(--ph3)}
+.pt4.active,.pt4:hover{color:var(--ph4);border-color:var(--ph4)}
+.ptq.active,.ptq:hover{color:var(--muted);border-color:var(--muted)}
+
+.container{max-width:1080px;margin:0 auto;padding:0 44px}
+
+.phase-header{padding:72px 0 44px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:80px 1fr;gap:28px;align-items:start}
+.phase-number{font-family:'Cormorant Garamond',serif;font-size:72px;font-weight:300;line-height:1;letter-spacing:-.04em;padding-top:6px}
+.phase-meta{display:flex;flex-direction:column;gap:6px}
+.phase-label{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase}
+.phase-title{font-family:'Cormorant Garamond',serif;font-size:clamp(28px,4vw,48px);font-weight:300;line-height:1.1;letter-spacing:-.02em}
+.phase-desc{font-size:15px;color:var(--muted);max-width:540px;line-height:1.75;margin-top:2px}
+
+.sp1 .phase-number{color:var(--ph1);opacity:.13}
+.sp1 .phase-label{color:var(--ph1)}
+.sp1 .stage-id{color:var(--ph1)}
+.sp2 .phase-number{color:var(--ph2);opacity:.13}
+.sp2 .phase-label{color:var(--ph2)}
+.sp2 .stage-id{color:var(--ph2)}
+.sp3 .phase-number{color:var(--ph3);opacity:.13}
+.sp3 .phase-label{color:var(--ph3)}
+.sp3 .stage-id{color:var(--ph3)}
+.sp4 .phase-number{color:var(--ph4);opacity:.13}
+.sp4 .phase-label{color:var(--ph4)}
+.sp4 .stage-id{color:var(--ph4)}
+
+.stage{border-bottom:1px solid var(--border);overflow:hidden}
+.stage-trigger{display:grid;grid-template-columns:56px 1fr auto;gap:20px;align-items:center;padding:26px 0;cursor:pointer;transition:background .15s}
+.stage-trigger:hover{background:rgba(0,0,0,.025);margin:0 -44px;padding-left:44px;padding-right:44px}
+.stage-id{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:300;line-height:1}
+.stage-title-wrap{display:flex;flex-direction:column;gap:3px}
+.stage-name{font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:400;line-height:1.2}
+.stage-sub{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+.stage-arrow{width:26px;height:26px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--muted);transition:transform .25s,background .2s;flex-shrink:0}
+.stage.open .stage-arrow{transform:rotate(45deg);background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.stage-body{display:none;padding:0 0 32px 76px}
+.stage.open .stage-body{display:block}
+.stage-body p{color:#3a3530;font-size:15.5px;line-height:1.8;margin-bottom:14px}
+.stage-body p:last-child{margin-bottom:0}
+.stage-body strong{font-weight:500;color:var(--ink)}
+.stage-body em{font-style:italic}
+
+.cb{background:var(--cb-bg);border:1px solid var(--cb-border);border-radius:10px;padding:20px 24px;margin:16px 0;overflow-x:auto}
+.cb pre{font-family:'DM Mono',monospace;font-size:12.5px;line-height:1.75;color:var(--cb-fg);white-space:pre}
+.cb .hi{color:var(--cb-hi)}
+.cb .ok{color:var(--cb-ok)}
+.cb .err{color:var(--cb-err)}
+.cb .dim{color:var(--cb-dim)}
+.cb .warn{color:var(--cb-warn)}
+.cb .cmd{color:#5a1a8c}
+
+.tip{display:flex;gap:14px;align-items:flex-start;background:var(--warm2);border-radius:10px;padding:16px 20px;margin:16px 0;border-left:3px solid var(--accent)}
+.tip-icon{font-size:17px;flex-shrink:0;line-height:1.75}
+.tip-text{font-size:14.5px;color:#2a3e2a;line-height:1.75}
+.tip-text strong{color:var(--accent);font-weight:500}
+
+.warning{display:flex;gap:14px;align-items:flex-start;background:#fdf3e8;border-radius:10px;padding:16px 20px;margin:16px 0;border-left:3px solid #c07020}
+.warning-text{font-size:14.5px;color:#4a2e10;line-height:1.75}
+.warning-text strong{color:#a05010;font-weight:500}
+
+.concept-note{background:#edf3fc;border-radius:10px;padding:14px 18px;margin:14px 0;border-left:3px solid var(--accent2);font-size:14px;color:#1e2e4a;line-height:1.75}
+
+/* LOOP VISUALISER */
+.loop-viz{display:flex;flex-direction:column;gap:0;margin:18px 0;border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.loop-step{display:grid;grid-template-columns:auto 1fr;gap:16px;padding:16px 20px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;align-items:start}
+.loop-step:last-child{border-bottom:none}
+.loop-step:hover{background:var(--warm)}
+.loop-step.active-step{background:var(--warm2)}
+.ls-num{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);padding-top:2px;min-width:20px}
+.ls-content{}
+.ls-title{font-weight:500;font-size:14.5px;color:var(--ink);margin-bottom:3px}
+.ls-desc{font-size:13px;color:var(--muted);line-height:1.6;display:none}
+.loop-step.active-step .ls-desc{display:block}
+
+/* TOOLS GRID */
+.tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}
+.tool-card{background:var(--warm);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+.tool-card-title{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;font-weight:400}
+.tool-card-body{font-size:13.5px;color:#3a3530;line-height:1.7}
+
+/* PERMISSION MODE CARDS */
+.perm-list{display:flex;flex-direction:column;gap:10px;margin:16px 0}
+.perm-card{border:1px solid var(--border);border-radius:10px;padding:14px 18px;display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start}
+.perm-badge{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:4px;white-space:nowrap}
+.pb-safe{background:#edf7ed;color:#1a5a1a;border:1px solid #b0d8b0}
+.pb-medium{background:#fdf3e8;color:#7a3a00;border:1px solid #e0c090}
+.pb-warn{background:#fce8e8;color:#8c1a1a;border:1px solid #e0a0a0}
+.perm-body{font-size:13.5px;color:#3a3530;line-height:1.7}
+.perm-body strong{font-weight:500;color:var(--ink)}
+
+/* CONTEXT METER */
+.ctx-meter{margin:16px 0}
+.ctx-track{height:24px;background:var(--warm2);border-radius:12px;overflow:hidden;position:relative;border:1px solid var(--border)}
+.ctx-fill{height:100%;border-radius:12px;transition:width .4s,background .4s;min-width:3px}
+.ctx-pct-label{font-family:'DM Mono',monospace;font-size:12px;color:var(--cb-fg);margin-top:6px;font-weight:400}
+.ctx-labels{display:grid;grid-template-columns:1fr 1fr 1fr;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:4px}
+.ctx-labels span:nth-child(2){text-align:center}
+.ctx-labels span:nth-child(3){text-align:right}
+
+/* CONCLUSION */
+.conclusion{background:#0d1a12;color:#f8f6f2;padding:96px 0 72px}
+.conc-title{font-family:'Cormorant Garamond',serif;font-size:clamp(34px,4.5vw,62px);font-weight:300;line-height:1.1;letter-spacing:-.03em;margin-bottom:52px}
+.conc-title em{font-style:italic;color:#5ae0a0}
+.conc-grid{display:grid;grid-template-columns:1fr 1fr;gap:72px}
+.pm-map{font-family:'DM Mono',monospace;font-size:12px;line-height:2.2;color:rgba(248,246,242,.55)}
+.pm-phase{color:#f8f6f2;font-weight:400}
+.pm-dot{color:#5ae0a0;margin-right:8px}
+.pm-stages{display:block;padding-left:20px;font-size:11px;color:rgba(248,246,242,.32)}
+.takeaway{padding:22px 0;border-top:1px solid rgba(255,255,255,.08)}
+.takeaway:first-child{border-top:none}
+.tk-num{font-family:'DM Mono',monospace;font-size:11px;color:#5ae0a0;letter-spacing:.08em}
+.tk-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:400;line-height:1.3;margin:4px 0}
+.tk-body{font-size:14px;color:rgba(248,246,242,.5);line-height:1.7}
+.footer-bar{border-top:1px solid rgba(255,255,255,.08);padding:28px 0 0;margin-top:52px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(248,246,242,.2);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+
+/* FAQ */
+.faq-section{padding:72px 0;background:var(--paper);border-top:1px solid var(--border)}
+.faq-title{font-family:'Cormorant Garamond',serif;font-size:46px;font-weight:300;margin-bottom:44px;letter-spacing:-.02em}
+.faq-item{border-top:1px solid var(--border)}
+.faq-item:last-child{border-bottom:1px solid var(--border)}
+.faq-q{display:flex;justify-content:space-between;align-items:center;gap:24px;padding:22px 0;cursor:pointer;font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:400;line-height:1.3;transition:color .2s}
+.faq-q:hover{color:var(--accent)}
+.faq-icon{flex-shrink:0;width:24px;height:24px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--muted);transition:transform .25s,background .2s}
+.faq-item.open .faq-icon{transform:rotate(45deg);background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.faq-a{display:none;padding:0 0 24px;font-size:15px;color:#4a4540;line-height:1.8}
+.faq-item.open .faq-a{display:block}
+
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .6s,transform .6s}
+.reveal.visible{opacity:1;transform:translateY(0)}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spulse{0%,100%{opacity:.2}50%{opacity:.5}}
+
+@media(max-width:780px){
+  .container{padding:0 20px}
+  .phase-header{grid-template-columns:1fr;gap:10px}
+  .phase-number{display:none}
+  .stage-trigger{grid-template-columns:42px 1fr auto;gap:10px}
+  .stage-body{padding-left:52px}
+  .tools-grid{grid-template-columns:1fr}
+  .conc-grid{grid-template-columns:1fr;gap:36px}
+  .phase-tab{padding:13px 12px;font-size:10px}
+}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero" id="top">
+<div class="hero-bg"></div>
+<div class="hero-grid"></div>
+<div class="hero-content">
+  <div class="hero-eyebrow">A plain-English technical guide</div>
+  <h1 class="hero-title">Claude Code —<br><em>how it works</em></h1>
+  <p class="hero-sub">From your first `claude` command to committed, tested, production-ready code — every step explained.</p>
+  <div class="hero-pills">
+    <div class="hero-pill">$ claude</div>
+    <div class="hero-pill">→ agentic loop</div>
+    <div class="hero-pill">→ tools execute</div>
+    <div class="hero-pill">→ working code</div>
+  </div>
+</div>
+<div class="scroll-hint"><div class="scroll-line"></div>scroll to explore</div>
+</section>
+
+<!-- NAV -->
+<nav class="phase-nav" id="pnav">
+  <a href="#ph1" class="phase-tab pt1">01 — Setup</a>
+  <a href="#ph2" class="phase-tab pt2">02 — Agentic loop</a>
+  <a href="#ph3" class="phase-tab pt3">03 — Tools</a>
+  <a href="#ph4" class="phase-tab pt4">04 — Safety &amp; sessions</a>
+  <a href="#faq" class="phase-tab ptq">FAQ</a>
+</nav>
+
+<!-- PHASE 1 -->
+<section id="ph1" class="sp1">
+<div class="container">
+  <div class="phase-header reveal">
+    <div class="phase-number">01</div>
+    <div class="phase-meta">
+      <div class="phase-label">Phase One</div>
+      <h2 class="phase-title">Setup and context assembly</h2>
+      <p class="phase-desc">Before Claude touches a single file, it chooses a model, reads your project instructions, and loads everything it needs to work effectively.</p>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stA">
+    <div class="stage-trigger" onclick="tog('stA')">
+      <div class="stage-id">A</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Where Claude Code runs</div>
+        <div class="stage-sub">Terminal · IDE · Browser · Slack</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <p>Claude Code is available in six environments. The same agentic loop runs everywhere — the difference is only the interface around it.</p>
+      <div class="cb"><pre><span class="hi">ENVIRONMENTS:</span>
+
+  <span class="cmd">$ claude</span>                 ← <span class="hi">Terminal CLI</span>  (full-featured, recommended)
+  VS Code extension        ← Inline diffs, @-mentions, plan review
+  JetBrains plugin         ← IntelliJ, PyCharm, GoLand, WebStorm
+  claude.ai/code           ← Browser — no install needed
+  Desktop app              ← macOS / Windows / Linux
+  Slack integration        ← Tag @Claude Code in threads and PRs
+
+<span class="hi">INSTALL (one line):</span>
+  macOS/Linux/WSL:   <span class="cmd">curl -fsSL https://claude.ai/install.sh | bash</span>
+  Windows PS:        <span class="cmd">irm https://claude.ai/install.ps1 | iex</span>
+
+<span class="hi">START:</span>
+  <span class="cmd">cd your-project</span>
+  <span class="cmd">claude</span>
+
+<span class="dim">Requires Claude subscription (Pro $20/mo · Max $100/mo · Max 20x $200/mo)
+or Anthropic Console API key. Terminal CLI also supports third-party providers.</span></pre></div>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stB">
+    <div class="stage-trigger" onclick="tog('stB')">
+      <div class="stage-id">B</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Context assembly</div>
+        <div class="stage-sub">CLAUDE.md · Auto-memory · Your prompt</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <p>Before Claude processes your task, it assembles a context window — everything it will read to understand your project and instructions.</p>
+      <div class="cb"><pre><span class="dim">┌──────────────────────────────────────────────────────┐</span>
+<span class="dim">│</span>  <span class="hi">CONTEXT WINDOW</span>                                      <span class="dim">│</span>
+<span class="dim">│</span>                                                      <span class="dim">│</span>
+<span class="dim">│</span>  <span class="hi">[System instructions]</span>                              <span class="dim">│</span>
+<span class="dim">│</span>  Built-in Claude Code behaviour and safety rules     <span class="dim">│</span>
+<span class="dim">│</span>                                                      <span class="dim">│</span>
+<span class="dim">│</span>  <span class="hi">[CLAUDE.md]</span>                                         <span class="dim">│</span>
+<span class="dim">│</span>  Your project coding standards, architecture,        <span class="dim">│</span>
+<span class="dim">│</span>  preferred libraries, commands, off-limits areas     <span class="dim">│</span>
+<span class="dim">│</span>                                                      <span class="dim">│</span>
+<span class="dim">│</span>  <span class="hi">[Auto-memory (MEMORY.md)]</span>                           <span class="dim">│</span>
+<span class="dim">│</span>  Learnings saved from past sessions automatically    <span class="dim">│</span>
+<span class="dim">│</span>  (first 200 lines / 25KB loaded each session)        <span class="dim">│</span>
+<span class="dim">│</span>                                                      <span class="dim">│</span>
+<span class="dim">│</span>  <span class="hi">[Your prompt]</span>                                       <span class="dim">│</span>
+<span class="dim">│</span>  "Fix the failing authentication tests"              <span class="dim">│</span>
+<span class="dim">└──────────────────────────────────────────────────────┘</span></pre></div>
+      <div class="tip"><div class="tip-icon">📄</div><div class="tip-text"><strong>CLAUDE.md is your most powerful lever.</strong> Add it to your project root. Every session, Claude reads it first. Invest 30 minutes here and it compounds across every task.<br><br>CLAUDE.md files can exist at multiple levels — project root, subdirectories, and your user home (~/.claude/CLAUDE.md for cross-project preferences). Subdirectory files apply only when Claude works inside that folder. Useful for monorepos where each package has different conventions.</div></div>
+      <div class="cb"><pre><span class="hi">Example CLAUDE.md:</span>
+
+  # Auth Service
+
+  <span class="ok">Build &amp; test:</span>   make test
+  <span class="ok">Database:</span>       PostgreSQL via SQLAlchemy ORM
+  <span class="ok">Auth:</span>           JWT tokens, 24h expiry
+  <span class="ok">Testing:</span>        pytest only — not unittest
+
+  <span class="warn">Never commit API keys. Use .env for all credentials.</span>
+  <span class="warn">Never modify legacy/ without asking first.</span></pre></div>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stC">
+    <div class="stage-trigger" onclick="tog('stC')">
+      <div class="stage-id">C</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Model selection</div>
+        <div class="stage-sub">Sonnet · Opus · Switch mid-session</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <p>Claude Code uses Claude AI models to understand code and reason about what to do. Different models offer different capability/speed tradeoffs.</p>
+      <div class="cb"><pre><span class="hi">claude-sonnet-4-6</span>   Default. Fast. Handles most coding tasks well.
+                    Best for: everyday features, bug fixes, refactors.
+
+<span class="hi">claude-opus-4-6</span>     Stronger reasoning. Use when you need:
+                    - Complex architectural decisions
+                    - Challenging multi-system refactors
+                    - Hard algorithmic problems
+                    - 1M token context window (vs 200K on Sonnet)
+
+<span class="hi">claude-haiku-4-5</span>    Fastest and cheapest. Use when you need:
+                    - High-volume automated tasks (CI pipelines)
+                    - Simple, well-scoped edits
+                    - Cost-sensitive batch operations
+
+<span class="dim">Switch with:  /model claude-opus-4-6
+Start with:   claude --model claude-haiku-4-5</span>
+
+<span class="dim">When docs say "Claude decides" or "Claude chooses" —
+it is the model reasoning, not a rule engine.</span></pre></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- PHASE 2 -->
+<section id="ph2" class="sp2" style="background:var(--warm);border-top:1px solid var(--border)">
+<div class="container">
+  <div class="phase-header reveal">
+    <div class="phase-number">02</div>
+    <div class="phase-meta">
+      <div class="phase-label">Phase Two</div>
+      <h2 class="phase-title">The agentic loop</h2>
+      <p class="phase-desc">Unlike a chat assistant that responds once, Claude Code runs a continuous loop — gather context, take action, verify results — until your task is complete.</p>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stD">
+    <div class="stage-trigger" onclick="tog('stD')">
+      <div class="stage-id">D</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Gather → Act → Verify → Repeat</div>
+        <div class="stage-sub">The three-phase loop · ReAct pattern</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <p>Every task moves through three phases that blend together. A question about your codebase may only need gathering. A bug fix cycles through all three many times. Click each step to see what happens.</p>
+
+      <div class="loop-viz" id="loop-viz">
+        <div class="loop-step active-step" onclick="toggleStep(this)">
+          <div class="ls-num">01</div>
+          <div class="ls-content">
+            <div class="ls-title">Gather context</div>
+            <div class="ls-desc">Claude reads files, searches the codebase, runs existing tests, reads error output — building an understanding of the current state before touching anything. For "fix the failing auth tests": Claude runs the test suite first, reads the failures, then locates the relevant source files.</div>
+          </div>
+        </div>
+        <div class="loop-step" onclick="toggleStep(this)">
+          <div class="ls-num">02</div>
+          <div class="ls-content">
+            <div class="ls-title">Take action</div>
+            <div class="ls-desc">Claude edits files, runs commands, creates new files, stages git changes. Actions are shown as diffs before they are applied. Claude applies changes precisely — surgical edits to specific lines, not full rewrites. You can interrupt at any point to redirect.</div>
+          </div>
+        </div>
+        <div class="loop-step" onclick="toggleStep(this)">
+          <div class="ls-num">03</div>
+          <div class="ls-content">
+            <div class="ls-title">Verify results</div>
+            <div class="ls-desc">Claude runs tests, reads the output, checks for type errors, verifies the goal was met. If tests fail, it reads the new error messages, adjusts its understanding, and loops back to Take Action with what it learned. It chains dozens of steps, course-correcting as it goes.</div>
+          </div>
+        </div>
+        <div class="loop-step" onclick="toggleStep(this)">
+          <div class="ls-num">04</div>
+          <div class="ls-content">
+            <div class="ls-title">Task complete (or ask you)</div>
+            <div class="ls-desc">When the task is done (or when Claude needs your input), it stops and reports. You can then approve commits, request changes, or give a new task. You are always part of the loop — Claude works autonomously but stays responsive to your direction at any point.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cb" style="margin-top:16px"><pre><span class="dim">CONCRETE EXAMPLE: "Fix the failing authentication tests"</span>
+
+  <span class="hi">Gather:</span>  Run pytest → 3 tests fail in test_auth.py
+           Read error: "jwt.exceptions.ExpiredSignatureError"
+           Search for JWT config → find auth.py:47
+
+  <span class="hi">Act:</span>     Read auth.py and .env.example
+           Identify: expiry set to 0 seconds (typo)
+           Edit auth.py line 47: expiry = 86400  # 24h
+
+  <span class="hi">Verify:</span>  Run pytest → all 3 tests pass
+           Run full suite → 0 regressions
+
+  <span class="hi">Done:</span>    Show diff, propose commit message, wait for approval</pre></div>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stE">
+    <div class="stage-trigger" onclick="tog('stE')">
+      <div class="stage-id">E</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">The ReAct pattern</div>
+        <div class="stage-sub">Observe · Reason · Act · Observe...</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <p>Claude Code follows the ReAct pattern — it interleaves reasoning and acting. Each tool call returns information that feeds directly into the next decision.</p>
+      <div class="cb"><pre><span class="hi">REACT (Reasoning + Acting):</span>
+
+  Observe  →  What do I know? What did the last step reveal?
+  Reason   →  What does this mean? What should I do next?
+  Act      →  Use a tool (read, edit, run, search...)
+  Observe  →  What did the tool return?
+  Reason   →  Is the task done? What next?
+  Act      →  ...  repeat
+
+This means Claude Code adapts based on what it discovers.
+It does not follow a rigid script — it reasons at each step.
+
+<span class="dim">Alternative patterns: graph routing (LangGraph) and tree search (LATS)
+exist but Claude Code uses ReAct for simplicity and low latency.
+Each step commits to one action — no backtracking.</span></pre></div>
+      <div class="tip"><div class="tip-icon">💡</div><div class="tip-text"><strong>Give Claude something to verify against.</strong> "Fix the bug and make sure all auth tests pass" is better than "fix the bug" — it gives the loop a clear exit criterion.</div></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- PHASE 3 -->
+<section id="ph3" class="sp3" style="border-top:1px solid var(--border)">
+<div class="container">
+  <div class="phase-header reveal">
+    <div class="phase-number">03</div>
+    <div class="phase-meta">
+      <div class="phase-label">Phase Three</div>
+      <h2 class="phase-title">Tools — how Claude takes action</h2>
+      <p class="phase-desc">Without tools, Claude can only respond with text. With tools, it can act. Each tool call returns information that feeds the next step in the loop.</p>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stF">
+    <div class="stage-trigger" onclick="tog('stF')">
+      <div class="stage-id">F</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">File operations</div>
+        <div class="stage-sub">Read · Write · Edit · Rename · Create</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <div class="tools-grid">
+        <div class="tool-card">
+          <div class="tool-card-title">Read</div>
+          <div class="tool-card-body">View any file in your project. Claude reads files to understand context before touching anything — it does not guess.</div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-card-title">Write / Edit</div>
+          <div class="tool-card-body">Creates new files or makes surgical edits — targeted string replacements, not full rewrites. Shown as a diff before applying.</div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-card-title">Rename / Move</div>
+          <div class="tool-card-body">Reorganises files. Used in refactors when Claude moves code to a better location or renames for consistency.</div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-card-title">Delete</div>
+          <div class="tool-card-body">Removes files. Always requires explicit confirmation — never deleted silently.</div>
+        </div>
+      </div>
+      <div class="cb"><pre><span class="dim">WRITE RESTRICTION:</span>
+  Claude Code can only write to the folder where it was started
+  and its subdirectories. It cannot write outside your project
+  without explicit permission — a hard constraint, not a default.</pre></div>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stG">
+    <div class="stage-trigger" onclick="tog('stG')">
+      <div class="stage-id">G</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Search and code intelligence</div>
+        <div class="stage-sub">File search · Content regex · Codebase map</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <p>Search is how Claude navigates a codebase it has never seen before. It does not pre-read everything — it searches strategically based on your task.</p>
+      <div class="cb"><pre><span class="hi">SEARCH TOOLS:</span>
+  Find files by pattern:   "all *_test.py files"
+  Content search (regex):  "every use of authenticate()"
+  Codebase map:            understand module connections without reading all files
+
+<span class="hi">CODE INTELLIGENCE</span> <span class="dim">(VS Code / JetBrains extension only):</span>
+  Live type errors after each edit
+  Jump to definition
+  Find all references
+  Available immediately — no extra configuration needed
+
+<span class="dim">Claude does not read your entire codebase on every task.
+It navigates intelligently: search first, read only what's needed.</span></pre></div>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stH">
+    <div class="stage-trigger" onclick="tog('stH')">
+      <div class="stage-id">H</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Bash / shell execution</div>
+        <div class="stage-sub">Tests · Builds · Git · Any command</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <p>Claude Code runs terminal commands using your existing tools. It does not have its own versions of git, npm, or pytest — it runs the same commands you would run.</p>
+      <div class="cb"><pre><span class="cmd">make test</span>                ← run your test suite
+<span class="cmd">pytest auth/</span>             ← scoped test run
+<span class="cmd">git log --oneline -20</span>    ← read recent history
+<span class="cmd">gh pr create</span>             ← open a PR via GitHub CLI
+<span class="cmd">npm run build</span>            ← build the project
+<span class="cmd">docker compose up -d</span>     ← start services
+<span class="cmd">pip install requests</span>     ← install a dependency
+
+<span class="dim">SAFETY: Claude asks permission before running shell commands by default.
+Dangerous commands (rm -rf, sudo, anything irreversible) always
+require explicit approval regardless of your permission settings.</span></pre></div>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stI">
+    <div class="stage-trigger" onclick="tog('stI')">
+      <div class="stage-id">I</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Web search and documentation</div>
+        <div class="stage-sub">Real-time lookup · Not frozen at training cutoff</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <div class="cb"><pre>Claude can search the web and fetch documentation in real time:
+
+  "What does this error mean?"        → searches Stack Overflow
+  "Latest React 19 hook syntax"       → fetches React docs
+  "How to configure GitHub Actions"   → reads the docs page
+
+<span class="hi">For coding questions, Claude's knowledge is not frozen.</span>
+It looks things up when current information would help.
+
+<span class="dim">Usage: automatic — Claude decides when a lookup helps.
+You can also explicitly ask: "check the docs for this API"</span></pre></div>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stJ">
+    <div class="stage-trigger" onclick="tog('stJ')">
+      <div class="stage-id">J</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Subagents — parallel workstreams</div>
+        <div class="stage-sub">Spawn agents · Isolated branches · Lead orchestrator</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <p>For large tasks, Claude Code spawns subagents — separate instances that work on different parts simultaneously, coordinated by a lead agent.</p>
+      <div class="cb"><pre><span class="dim">EXAMPLE: "Refactor the API layer to async/await"</span>
+
+  Lead agent analyses codebase → divides into 4 modules
+
+  Spawns:
+    Subagent A  →  auth module
+    Subagent B  →  users module
+    Subagent C  →  products module
+    Subagent D  →  orders module
+
+    (all running simultaneously, in isolated git worktrees)
+
+  Lead agent:
+    Monitors progress
+    Merges results
+    Runs full test suite
+    Resolves any conflicts
+
+<span class="dim">Each subagent has its own context window — clean slate per task.
+Subagents use git worktrees: isolated branches, no interference.</span></pre></div>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stK">
+    <div class="stage-trigger" onclick="tog('stK')">
+      <div class="stage-id">K</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">MCP — external service connections</div>
+        <div class="stage-sub">Jira · Slack · Drive · Databases · Custom APIs</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <p>Model Context Protocol (MCP) is an open standard connecting Claude Code to external tools and data beyond your local filesystem.</p>
+      <div class="cb"><pre><span class="hi">MCP-CONNECTED SERVICES:</span>
+
+  Google Drive   →  Read design docs, specs, meeting notes
+  Jira / Linear  →  Read and update tickets
+  Slack          →  Post updates, read threads
+  Figma          →  Read design tokens and components
+  Databases      →  Query your database directly
+  Custom APIs    →  Any service you expose as an MCP server
+
+<span class="hi">EXAMPLE: "Implement the feature described in Jira ticket JR-482"</span>
+
+  Claude reads JR-482 from Jira (via MCP)
+  Reads design spec from Google Drive (via MCP)
+  Implements the feature across multiple files
+  Updates ticket status in Jira (via MCP)
+  Opens a PR on GitHub
+
+<span class="dim">MCP servers are configured in your Claude Code settings
+and connect automatically at session start.</span></pre></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- PHASE 4 -->
+<section id="ph4" class="sp4" style="background:var(--warm);border-top:1px solid var(--border)">
+<div class="container">
+  <div class="phase-header reveal">
+    <div class="phase-number">04</div>
+    <div class="phase-meta">
+      <div class="phase-label">Phase Four</div>
+      <h2 class="phase-title">Safety, sessions, and delivery</h2>
+      <p class="phase-desc">You stay in control. Diffs before edits, permission prompts before commands, checkpoints for undo, and context compaction for long sessions.</p>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stL">
+    <div class="stage-trigger" onclick="tog('stL')">
+      <div class="stage-id">L</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Permissions and safety modes</div>
+        <div class="stage-sub">Ask · Auto-approve · Sandbox · Yolo</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <div class="perm-list">
+        <div class="perm-card">
+          <div class="perm-badge pb-safe">Default</div>
+          <div class="perm-body"><strong>Ask everything.</strong> Claude prompts before every file write and shell command. Maximum visibility. Best for unfamiliar codebases or sensitive projects.</div>
+        </div>
+        <div class="perm-card">
+          <div class="perm-badge pb-safe">Auto-approve</div>
+          <div class="perm-body"><strong>Whitelist safe commands.</strong> Claude runs whitelisted commands (e.g. <code>npm test</code>, read-only git) without prompting. Reduces friction for trusted operations.</div>
+        </div>
+        <div class="perm-card">
+          <div class="perm-badge pb-medium">Sandbox (/sandbox)</div>
+          <div class="perm-body"><strong>Filesystem and network isolation.</strong> Claude works autonomously within defined boundaries. Best for CI/CD pipelines and automated tasks on untrusted code.</div>
+        </div>
+        <div class="perm-card">
+          <div class="perm-badge pb-warn">--dangerously-skip-permissions</div>
+          <div class="perm-body"><strong>CLI flag, not a named mode.</strong> Skips all permission prompts. Use only in controlled, isolated environments (e.g. sandboxed Docker containers for CI). Never on production systems or anywhere credentials are present. Files in <code>.claude/skills/</code>, <code>.claude/agents/</code>, and <code>.claude/commands/</code> are always writable without prompting regardless of this flag.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stM">
+    <div class="stage-trigger" onclick="tog('stM')">
+      <div class="stage-id">M</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Checkpoints and undo</div>
+        <div class="stage-sub">Per-turn snapshots · /undo · Git stash</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <p>Before every batch of changes, Claude Code creates a checkpoint. If you do not like what it did, <code>/undo</code> rolls back to before that turn.</p>
+      <div class="cb"><pre>Your project state: <span class="ok">[A]</span>
+                     │
+Claude plans changes
+                     │
+Checkpoint created: <span class="ok">[A]</span>  ← restore point saved
+                     │
+Changes applied:    <span class="hi">[B]</span>
+                     │
+You don't like [B]:
+  <span class="cmd">/undo</span>  →  back to <span class="ok">[A]</span>
+
+<span class="dim">Checkpoints are per-turn (each round-trip with Claude).
+Implemented via git stash / git reset under the hood.
+Navigate multiple turns back if needed.</span></pre></div>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stN">
+    <div class="stage-trigger" onclick="tog('stN')">
+      <div class="stage-id">N</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Context compaction</div>
+        <div class="stage-sub">Five-layer pipeline · /compact · /clear</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <p>Long sessions fill the context window. Claude Code has a five-layer compaction pipeline. At 85%+, precision drops and hallucinations increase — keeping context healthy is one of the most important habits for reliable results.</p>
+
+      <div class="ctx-meter">
+        <div class="ctx-track">
+          <div class="ctx-fill" id="ctx-fill" style="width:0%;background:#1a6e3c"></div>
+        </div>
+        <div class="ctx-pct-label" id="ctx-pct">0% — work freely</div>
+        <div class="ctx-labels">
+          <span>0%</span>
+          <span>70% — /compact</span>
+          <span>90% — /clear</span>
+        </div>
+      </div>
+      <input type="range" min="0" max="100" value="0" style="width:100%;margin:8px 0 4px;accent-color:var(--accent)" oninput="updateCtx(this.value)">
+      <div id="ctx-advice" style="font-size:13px;font-family:'DM Mono',monospace;min-height:20px;margin-top:2px"></div>
+
+      <div class="cb" style="margin-top:16px"><pre><span class="hi">COMPACTION LAYERS</span> <span class="dim">(applied in sequence, graduated):</span>
+  1. Budget reduction          (always active)
+  2. Remove redundant outputs  (tool results already seen)
+  3. Summarise old turns       (compress conversation history)
+  4. Compress files to diffs   (keep changes, drop originals)
+  5. Aggressive summarisation  (last resort)
+
+<span class="cmd">/compact</span>   manual compaction — run at 70%
+<span class="cmd">/clear</span>     fresh context — mandatory at 90%+
+<span class="cmd">/context</span>   see current context usage</pre></div>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stO">
+    <div class="stage-trigger" onclick="tog('stO')">
+      <div class="stage-id">O</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Git workflow</div>
+        <div class="stage-sub">Diffs · Commits · Branches · Pull requests</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <div class="cb"><pre><span class="hi">GIT WORKFLOW EXAMPLE:</span>
+  You:    "Implement password reset and open a PR"
+
+  Claude: 1. <span class="cmd">git checkout -b feature/password-reset</span>
+          2. Read existing auth code for context
+          3. Implement across 4 files
+          4. <span class="cmd">make test</span>  →  all pass
+          5. Show diff — wait for your review
+          6. <span class="cmd">git add -p && git commit -m "Add password reset flow"</span>
+          7. <span class="cmd">gh pr create --title "Add password reset flow" ...</span>
+
+<span class="dim">Claude ALWAYS asks approval before committing.
+You see the diff and the commit message before anything is staged.</span>
+
+<span class="hi">GIT CAPABILITIES:</span>
+  Read:    git status / diff / log / blame
+  Write:   git add / commit / stash / checkout
+  Create:  git checkout -b (new branches)
+  PRs:     gh pr create (via GitHub CLI)</pre></div>
+      <div class="warning"><div class="warning-text"><strong>Best practice:</strong> Always use feature branches. Never have Claude commit directly to main. Review every diff before accepting — treat all Claude output as code review, not finished product.</div></div>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stP">
+    <div class="stage-trigger" onclick="tog('stP')">
+      <div class="stage-id">P</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Skills, hooks, and CI/CD</div>
+        <div class="stage-sub">Slash commands · Automation · Pipelines</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <p><strong>Skills</strong> package repeatable workflows as slash commands. <strong>Hooks</strong> run shell commands automatically before or after Claude Code actions.</p>
+      <div class="cb"><pre><span class="hi">SKILLS</span> <span class="dim">— stored in .claude/skills/</span>
+  <span class="cmd">/review-pr</span>       runs your PR review checklist
+  <span class="cmd">/deploy-staging</span>  builds, tests, deploys to staging
+  <span class="cmd">/add-migration</span>   scaffolds a new database migration
+
+<span class="hi">HOOKS</span> <span class="dim">— shell commands triggered by Claude Code actions</span>
+  After every file edit:   eslint --fix on changed file
+  Before every commit:     run full test suite; block if failing
+  After session ends:      prettier on all changed files
+
+<span class="hi">HEADLESS / CI MODE</span> <span class="dim">— pipe input, chain with other tools</span>
+  <span class="cmd">git diff main --name-only | claude -p "review for security issues"</span>
+  <span class="cmd">tail -200 app.log | claude -p "summarise any errors"</span>
+  <span class="cmd">claude -p "translate new i18n strings into French, raise a PR"</span>
+
+<span class="hi">ROUTINES</span> <span class="dim">— scheduled tasks (Anthropic-managed or desktop)</span>
+  Morning PR review digest
+  Weekly dependency audit
+  Nightly CI failure analysis
+  Doc sync after every merge</pre></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- FAQ -->
+<section id="faq" class="faq-section">
+<div class="container">
+  <h2 class="faq-title reveal">Frequently asked questions</h2>
+
+  <div class="faq-item reveal">
+    <div class="faq-q" onclick="togFaq(this)">Does Claude Code remember previous sessions?<div class="faq-icon">+</div></div>
+    <div class="faq-a">Partially. <strong>Auto-memory persists</strong> — learnings Claude saves automatically (build commands, your preferences, project patterns). <strong>Conversations do not.</strong> Each new session starts with a fresh context window; Claude does not recall what you discussed last Tuesday.
+      <div class="cb" style="margin-top:12px"><pre><span class="hi">PERSISTS:</span>  Auto-memory (MEMORY.md) · CLAUDE.md
+<span class="err">DOES NOT:</span>  Conversation history · File contents · Session state
+
+<span class="dim">Workaround: /resume continues the most recent session (if not expired)
+            --continue flag does the same via CLI</span></pre></div>
+    </div>
+  </div>
+
+  <div class="faq-item reveal">
+    <div class="faq-q" onclick="togFaq(this)">What can Claude Code actually access?<div class="faq-icon">+</div></div>
+    <div class="faq-a"><div class="cb"><pre><span class="hi">CAN ACCESS:</span>
+  Files in your project directory and subdirectories
+  Any terminal command you could run (with your permission)
+  Your git history, branch state, uncommitted changes
+  Your CLAUDE.md and auto-memory
+  The web (search and fetch documentation)
+  MCP-connected services (if configured)
+
+<span class="err">CANNOT ACCESS:</span>
+  Files outside your project directory (without explicit permission)
+  Other projects or Claude Code sessions
+  Other users' data
+  Production systems (unless you provide credentials explicitly)</pre></div>
+    </div>
+  </div>
+
+  <div class="faq-item reveal">
+    <div class="faq-q" onclick="togFaq(this)">How is Claude Code different from GitHub Copilot or Cursor?<div class="faq-icon">+</div></div>
+    <div class="faq-a"><div class="cb"><pre><span class="dim">GITHUB COPILOT CLI:</span>
+  Command generation. Does not read codebase or run multi-step tasks.
+
+<span class="dim">CURSOR:</span>
+  Full IDE replacement. Excellent inline editing.
+  Operates as an editor, not a terminal agent.
+
+<span class="hi">CLAUDE CODE:</span>
+  Lives in your terminal (and IDE as an extension).
+  Reads your whole codebase, runs commands, manages git.
+  Excels at multi-file, multi-step autonomous tasks.
+  Pipeable, scriptable, runs in CI/CD.
+
+<span class="dim">WHEN TO USE WHICH:</span>
+  Inline autocomplete while typing     →  Copilot / Cursor
+  Editing one file carefully           →  Cursor
+  "Build this feature end to end"      →  Claude Code
+  "Fix CI, open a PR, update docs"     →  Claude Code</pre></div>
+    </div>
+  </div>
+
+  <div class="faq-item reveal">
+    <div class="faq-q" onclick="togFaq(this)">What happens when Claude Code makes a mistake?<div class="faq-icon">+</div></div>
+    <div class="faq-a">Mistakes happen. Community benchmarks have found AI-generated code can introduce significantly more logic errors than human-written equivalents — exact figures vary by study, but the direction is consistent. Always review diffs and run your test suite.
+      <div class="cb" style="margin-top:12px"><pre><span class="hi">YOUR SAFETY LAYERS:</span>
+  Diff review:   see every change before accepting it
+  /undo:         roll back to before the last turn
+  Permissions:   risky commands always need approval
+  Tests:         give Claude a verifiable success criterion
+  Git history:   all committed changes are recoverable
+
+<span class="hi">BEST PRACTICE:</span>
+  <span class="ok">"Fix the auth bug and make sure all auth tests pass"</span>
+  is safer than
+  <span class="dim">"Fix the auth bug"</span>
+  because it gives Claude a clear exit criterion.</pre></div>
+    </div>
+  </div>
+
+  <div class="faq-item reveal">
+    <div class="faq-q" onclick="togFaq(this)">Is Claude Code safe for production codebases?<div class="faq-icon">+</div></div>
+    <div class="faq-a">Yes, with the right practices.
+      <div class="cb" style="margin-top:12px"><pre><span class="hi">SAFE PRACTICES:</span>
+  Always review diffs before accepting
+  Run your test suite after Claude's changes
+  Use feature branches — never commit directly to main
+  Set permission mode to "ask everything" for sensitive code
+  Use /sandbox for CI/CD automation
+  Never pass production database credentials unless necessary
+
+<span class="hi">COMPLIANCE:</span>
+  HIPAA · SOC 2 Type I &amp; II · ISO 27001:2022
+  ISO/IEC 42001:2023 · FedRAMP High · UK Cyber Essentials
+
+<span class="dim">Anthropic does not train models on your code by default.
+See the privacy policy for data retention details.</span></pre></div>
+    </div>
+  </div>
+
+  <div class="faq-item reveal">
+    <div class="faq-q" onclick="togFaq(this)">What should I put in CLAUDE.md?<div class="faq-icon">+</div></div>
+    <div class="faq-a"><div class="cb"><pre><span class="hi">HIGH-VALUE CONTENTS:</span>
+
+  <span class="ok">Build and test commands:</span>
+    "Run tests with: make test"
+    "Build with: npm run build"
+
+  <span class="ok">Architecture decisions:</span>
+    "All API handlers live in src/handlers/"
+    "Use SQLAlchemy ORM — not raw SQL"
+
+  <span class="ok">Coding standards:</span>
+    "Type hints on all Python functions"
+    "Max function length: 30 lines"
+
+  <span class="ok">Review checklist:</span>
+    "Before any commit: lint, tests, no hardcoded secrets"
+
+  <span class="warn">Off-limits:</span>
+    "Never modify legacy/ without asking first"
+    "Never commit API keys or passwords"
+
+<span class="dim">Keep under 500 lines. Long files are read but less precisely followed.</span></pre></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- CONCLUSION -->
+<section class="conclusion">
+<div class="container">
+  <h2 class="conc-title">The full flow,<br><em>in one picture</em></h2>
+  <div class="conc-grid">
+    <div>
+      <div class="pm-map">
+        <div><span class="pm-dot">▪</span><span class="pm-phase">Phase 1 — Setup</span><span class="pm-stages">A. Environment &nbsp; B. Context (CLAUDE.md + memory + prompt) &nbsp; C. Model</span></div>
+        <div><span class="pm-dot">▪</span><span class="pm-phase">Phase 2 — Agentic loop</span><span class="pm-stages">D. Gather → Act → Verify → Repeat &nbsp; E. ReAct pattern</span></div>
+        <div><span class="pm-dot">▪</span><span class="pm-phase">Phase 3 — Tools</span><span class="pm-stages">F. File ops &nbsp; G. Search &nbsp; H. Bash &nbsp; I. Web &nbsp; J. Subagents &nbsp; K. MCP</span></div>
+        <div><span class="pm-dot">▪</span><span class="pm-phase">Phase 4 — Safety &amp; sessions</span><span class="pm-stages">L. Permissions &nbsp; M. Checkpoints &nbsp; N. Compaction &nbsp; O. Git &nbsp; P. Skills/hooks &nbsp; Q. CI/CD &amp; routines</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="takeaway">
+        <div class="tk-num">01</div>
+        <div class="tk-title">Agent, not chatbot</div>
+        <div class="tk-body">Claude Code takes actions — read, edit, run, commit. The agentic loop keeps running until the task is complete, course-correcting at each step.</div>
+      </div>
+      <div class="takeaway">
+        <div class="tk-num">02</div>
+        <div class="tk-title">CLAUDE.md is your lever</div>
+        <div class="tk-body">Time invested in CLAUDE.md compounds across every session. It is the most reliable way to get consistent, convention-respecting results.</div>
+      </div>
+      <div class="takeaway">
+        <div class="tk-num">03</div>
+        <div class="tk-title">Context health matters</div>
+        <div class="tk-body">Run /compact at 70%, /clear at 90%. Bloated context windows produce less reliable results — treat them like a clean desk policy.</div>
+      </div>
+      <div class="takeaway">
+        <div class="tk-num">04</div>
+        <div class="tk-title">Verify everything</div>
+        <div class="tk-body">Claude Code is not infallible. Review every diff. Run your tests. Treat all output as code review, not finished product.</div>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bar">
+    <span>Claude Code — How It Works · Guide v1.0, May 2026</span>
+    <span>Based on official docs at code.claude.com/docs. Features subject to change.</span>
+  </div>
+</div>
+</section>
+
+<script>
+function tog(id){document.getElementById(id).classList.toggle('open')}
+function togFaq(btn){btn.closest('.faq-item').classList.toggle('open')}
+
+function toggleStep(el){
+  document.querySelectorAll('#loop-viz .loop-step').forEach(s=>s.classList.remove('active-step'));
+  el.classList.add('active-step');
+}
+
+function updateCtx(v){
+  const fill = document.getElementById('ctx-fill');
+  const pct = document.getElementById('ctx-pct');
+  const adv = document.getElementById('ctx-advice');
+  v = parseInt(v);
+  let bg, status, advice, advColor;
+  if(v<50){bg='#1a6e3c';status='— work freely';advice='';advColor='var(--muted)'}
+  else if(v<70){bg='#1d5fa8';status='— still healthy';advice='';advColor='var(--muted)'}
+  else if(v<90){bg='#a06010';status='— run /compact';advice='/compact  ← run now to maintain precision';advColor='#a06010'}
+  else{bg='#8c1a1a';status='— /clear required';advice='/clear  ← mandatory — start fresh context';advColor='#8c1a1a'}
+  fill.style.width=v+'%';
+  fill.style.background=bg;
+  pct.textContent=v+'% '+status;
+  pct.style.color=bg;
+  adv.textContent=advice;
+  adv.style.color=advColor;
+}
+
+const obs=new IntersectionObserver(es=>{
+  es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible')});
+},{threshold:.07});
+document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+
+const navSecs=['ph1','ph2','ph3','ph4','faq'];
+const tabs=document.querySelectorAll('.phase-tab');
+window.addEventListener('scroll',()=>{
+  let cur='';
+  navSecs.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el&&el.getBoundingClientRect().top<100) cur=id;
+  });
+  tabs.forEach(t=>{
+    t.classList.remove('active');
+    if(t.getAttribute('href')==='#'+cur) t.classList.add('active');
+  });
+},{passive:true});
+
+['stA','stD','stF','stL'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el) el.classList.add('open');
+});
+</script>
+</body>
+</html>
