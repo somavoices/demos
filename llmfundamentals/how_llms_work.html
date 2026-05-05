@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How an LLM Answers Your Question</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Mono:wght@300;400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#1c1917;--paper:#faf9f6;--warm:#f5f0e8;--warm2:#ede8dc;
+  --accent:#b85c28;--accent2:#1d5fa8;--accent3:#1e7a4e;
+  --muted:#7a7570;--border:#ddd8ce;
+  --ph1:#b85c28;--ph2:#1d5fa8;--ph3:#6b32a0;--ph4:#1e7a4e;--ph5:#a07828;
+  --cb-bg:#f0ece3;--cb-border:#ddd8ce;
+  --cb-fg:#2a2520;--cb-hi:#8a3a10;--cb-ok:#1a5c28;--cb-err:#8c1a1a;--cb-dim:#9a9080;--cb-lk:#1a4880;
+  --hero-bg:#16120e;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:'DM Sans',sans-serif;font-weight:300;line-height:1.7;font-size:17px;overflow-x:hidden}
+
+/* HERO */
+.hero{min-height:100vh;display:grid;grid-template-rows:1fr auto;position:relative;overflow:hidden;background:var(--hero-bg)}
+.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 20% 50%,#1e2a3a 0%,transparent 60%),radial-gradient(ellipse 60% 80% at 80% 30%,#2a1a0e 0%,transparent 60%),radial-gradient(ellipse 40% 40% at 50% 80%,#1a1a2e 0%,transparent 50%)}
+.hero-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:60px 60px;mask-image:radial-gradient(ellipse 80% 70% at 50% 50%,black 40%,transparent 100%)}
+.hero-content{position:relative;z-index:2;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:80px 40px 60px;gap:24px}
+.hero-eyebrow{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.25em;text-transform:uppercase;color:#e8945a;opacity:0;animation:fadeUp .8s .2s forwards}
+.hero-title{font-family:'Cormorant Garamond',serif;font-size:clamp(40px,7vw,86px);font-weight:300;line-height:1.05;color:#f8f4ee;letter-spacing:-.02em;max-width:860px;opacity:0;animation:fadeUp .9s .35s forwards}
+.hero-title em{font-style:italic;color:#e8945a}
+.hero-sub{font-size:16px;font-weight:300;color:rgba(248,244,238,.55);max-width:500px;line-height:1.75;opacity:0;animation:fadeUp .9s .5s forwards}
+.hero-pill{font-family:'DM Mono',monospace;font-size:13px;color:#e8b96a;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:12px 22px;opacity:0;animation:fadeUp .9s .65s forwards}
+.scroll-hint{position:relative;z-index:2;padding:0 0 44px;text-align:center;color:rgba(248,244,238,.22);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.15em;display:flex;flex-direction:column;align-items:center;gap:10px;opacity:0;animation:fadeUp .9s 1s forwards}
+.scroll-line{width:1px;height:44px;background:linear-gradient(transparent,rgba(248,244,238,.22));animation:spulse 2.2s 1.5s infinite}
+
+/* NAV */
+.phase-nav{position:sticky;top:0;z-index:100;background:rgba(250,249,246,.93);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);padding:0 40px;display:flex;gap:0;overflow-x:auto;scrollbar-width:none}
+.phase-nav::-webkit-scrollbar{display:none}
+.phase-tab{flex-shrink:0;padding:15px 18px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-decoration:none;border-bottom:2px solid transparent;transition:color .2s,border-color .2s;white-space:nowrap}
+.phase-tab:hover{color:var(--ink)}
+.p1.phase-tab.active,.p1.phase-tab:hover{color:var(--ph1);border-color:var(--ph1)}
+.p2.phase-tab.active,.p2.phase-tab:hover{color:var(--ph2);border-color:var(--ph2)}
+.p3.phase-tab.active,.p3.phase-tab:hover{color:var(--ph3);border-color:var(--ph3)}
+.p4.phase-tab.active,.p4.phase-tab:hover{color:var(--ph4);border-color:var(--ph4)}
+.p5.phase-tab.active,.p5.phase-tab:hover{color:var(--ph5);border-color:var(--ph5)}
+.pa.phase-tab.active,.pa.phase-tab:hover{color:#a02020;border-color:#a02020}
+.pfaq.phase-tab.active,.pfaq.phase-tab:hover{color:var(--muted);border-color:var(--muted)}
+
+/* LAYOUT */
+.container{max-width:1080px;margin:0 auto;padding:0 44px}
+
+/* PHASE HEADER */
+.phase-header{padding:72px 0 44px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:80px 1fr;gap:28px;align-items:start}
+.phase-number{font-family:'Cormorant Garamond',serif;font-size:72px;font-weight:300;line-height:1;letter-spacing:-.04em;padding-top:6px}
+.phase-meta{display:flex;flex-direction:column;gap:6px}
+.phase-label{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase}
+.phase-title{font-family:'Cormorant Garamond',serif;font-size:clamp(30px,4vw,50px);font-weight:300;line-height:1.1;letter-spacing:-.02em}
+.phase-desc{font-size:15px;color:var(--muted);max-width:540px;line-height:1.75;margin-top:2px}
+
+/* PHASE COLOUR CLASSES */
+.sec-p1 .phase-number{color:var(--ph1);opacity:.15}
+.sec-p1 .phase-label{color:var(--ph1)}
+.sec-p2 .phase-number{color:var(--ph2);opacity:.15}
+.sec-p2 .phase-label{color:var(--ph2)}
+.sec-p3 .phase-number{color:var(--ph3);opacity:.15}
+.sec-p3 .phase-label{color:var(--ph3)}
+.sec-p4 .phase-number{color:var(--ph4);opacity:.15}
+.sec-p4 .phase-label{color:var(--ph4)}
+.sec-p5 .phase-number{color:var(--ph5);opacity:.15}
+.sec-p5 .phase-label{color:var(--ph5)}
+.sec-p1 .stage-id{color:var(--ph1)}
+.sec-p2 .stage-id{color:var(--ph2)}
+.sec-p3 .stage-id{color:var(--ph3)}
+.sec-p4 .stage-id{color:var(--ph4)}
+.sec-p5 .stage-id{color:var(--ph5)}
+
+/* STAGE */
+.stage{border-bottom:1px solid var(--border);overflow:hidden}
+.stage-trigger{display:grid;grid-template-columns:56px 1fr auto;gap:20px;align-items:center;padding:26px 0;cursor:pointer;transition:background .15s}
+.stage-trigger:hover{background:rgba(0,0,0,.025);margin:0 -44px;padding-left:44px;padding-right:44px}
+.stage-id{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:300;line-height:1}
+.stage-title-wrap{display:flex;flex-direction:column;gap:3px}
+.stage-name{font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:400;line-height:1.2}
+.stage-sub{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+.stage-arrow{width:26px;height:26px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--muted);transition:transform .25s,background .2s,border-color .2s;flex-shrink:0}
+.stage.open .stage-arrow{transform:rotate(45deg);background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.stage-body{display:none;padding:0 0 32px 76px}
+.stage.open .stage-body{display:block}
+.stage-body p{color:#3a3530;font-size:15.5px;line-height:1.8;margin-bottom:14px}
+.stage-body p:last-child{margin-bottom:0}
+.stage-body strong{font-weight:500;color:var(--ink)}
+.stage-body em{font-style:italic}
+
+/* CODE BLOCK */
+.cb{background:var(--cb-bg);border:1px solid var(--cb-border);border-radius:10px;padding:20px 24px;margin:16px 0;overflow-x:auto}
+.cb pre{font-family:'DM Mono',monospace;font-size:12.5px;line-height:1.75;color:var(--cb-fg);white-space:pre}
+.cb .hi{color:var(--cb-hi)}
+.cb .ok{color:var(--cb-ok)}
+.cb .err{color:var(--cb-err)}
+.cb .dim{color:var(--cb-dim)}
+.cb .lk{color:var(--cb-lk)}
+
+/* ANALOGY */
+.analogy{display:flex;gap:14px;align-items:flex-start;background:var(--warm2);border-radius:10px;padding:16px 20px;margin:16px 0;border-left:3px solid var(--accent)}
+.analogy-icon{font-size:17px;flex-shrink:0;line-height:1.75}
+.analogy-text{font-size:14.5px;color:#4a3f33;line-height:1.75}
+.analogy-text strong{color:var(--accent);font-weight:500}
+
+/* CONCEPT NOTE */
+.concept-note{background:#edf3fc;border-radius:10px;padding:14px 18px;margin:14px 0;border-left:3px solid var(--accent2);font-size:14px;color:#1e2e4a;line-height:1.75}
+
+/* TOKENS */
+.token-row{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.token-chip{font-family:'DM Mono',monospace;font-size:13px;padding:7px 13px;border-radius:7px;background:var(--warm2);color:var(--cb-hi);border:1px solid var(--cb-border);display:flex;flex-direction:column;align-items:center;gap:3px}
+.token-chip .tid{font-size:10px;color:var(--muted);letter-spacing:.04em}
+
+/* ATTENTION */
+.attn-container{margin:16px 0}
+.attn-words{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.attn-word{font-family:'Cormorant Garamond',serif;font-size:18px;padding:8px 13px;border-radius:7px;cursor:pointer;border:1px solid var(--border);background:white;transition:all .2s;position:relative;user-select:none}
+.attn-word:hover{border-color:var(--accent);color:var(--accent)}
+.attn-word.query{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.attn-word.high{background:rgba(184,92,40,.14);border-color:rgba(184,92,40,.45);color:#7a2808}
+.attn-word.med{background:rgba(184,92,40,.06);border-color:rgba(184,92,40,.25);color:#5a3020}
+.attn-word .wt{font-family:'DM Mono',monospace;font-size:10px;position:absolute;top:-9px;right:-4px;background:var(--accent);color:white;padding:1px 5px;border-radius:4px;pointer-events:none}
+.attn-hint{font-size:13.5px;color:var(--muted);font-style:italic;line-height:1.6}
+
+/* PROBABILITY BARS */
+.prob-list{display:flex;flex-direction:column;gap:10px;margin:16px 0}
+.prob-row{display:grid;grid-template-columns:80px 1fr 52px;align-items:center;gap:12px}
+.prob-label{font-family:'DM Mono',monospace;font-size:13px;color:var(--cb-hi);white-space:nowrap}
+.prob-track{background:var(--warm2);border-radius:4px;overflow:hidden;height:22px;position:relative}
+.prob-fill{height:100%;border-radius:4px;transition:width .6s cubic-bezier(.4,0,.2,1);min-width:3px}
+.prob-pct{font-family:'DM Mono',monospace;font-size:12.5px;color:var(--cb-fg);text-align:right;font-weight:400}
+.prob-logit{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-align:right}
+
+/* ALIGNMENT SECTION */
+.align-section{background:#1c1410;color:#f8f4ee;padding:80px 0}
+.align-section .container{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:start}
+.align-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(180,40,40,.18);border:1px solid rgba(180,40,40,.35);border-radius:20px;padding:5px 14px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#e07070;margin-bottom:22px}
+.align-dot{width:6px;height:6px;border-radius:50%;background:#e07070;animation:pulse 2s infinite;flex-shrink:0}
+.align-title{font-family:'Cormorant Garamond',serif;font-size:clamp(26px,3.5vw,42px);font-weight:300;line-height:1.15;margin-bottom:18px;letter-spacing:-.02em}
+.align-body{font-size:14.5px;color:rgba(248,244,238,.6);line-height:1.8}
+.align-detail{margin-top:22px;font-size:14px;color:rgba(248,244,238,.45);line-height:1.9}
+.align-detail strong{color:rgba(248,244,238,.8);font-weight:500}
+.align-cards{display:flex;flex-direction:column;gap:14px}
+.align-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:18px 20px}
+.align-card-lbl{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.15em;text-transform:uppercase;margin-bottom:8px}
+.align-card-lbl.raw{color:#d07070}
+.align-card-lbl.aligned{color:#70c070}
+.align-card-txt{font-family:'Cormorant Garamond',serif;font-size:17px;font-style:italic;line-height:1.55}
+.align-card-txt.raw{color:rgba(248,244,238,.38)}
+.align-card-txt.aligned{color:#f8f4ee}
+.align-footnote{margin-top:16px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(248,244,238,.3);line-height:1.7}
+
+/* FAQ */
+.faq-section{padding:72px 0;background:#faf9f6;border-top:1px solid var(--border)}
+.faq-title{font-family:'Cormorant Garamond',serif;font-size:46px;font-weight:300;margin-bottom:44px;letter-spacing:-.02em}
+.faq-item{border-top:1px solid var(--border)}
+.faq-item:last-child{border-bottom:1px solid var(--border)}
+.faq-q{display:flex;justify-content:space-between;align-items:center;gap:24px;padding:22px 0;cursor:pointer;font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:400;line-height:1.3;transition:color .2s}
+.faq-q:hover{color:var(--accent)}
+.faq-icon{flex-shrink:0;width:24px;height:24px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--muted);transition:transform .25s,background .2s}
+.faq-item.open .faq-icon{transform:rotate(45deg);background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.faq-a{display:none;padding:0 0 24px 0;font-size:15px;color:#4a4540;line-height:1.8}
+.faq-item.open .faq-a{display:block}
+
+/* CONCLUSION */
+.conclusion{background:#1c1410;color:#f8f4ee;padding:96px 0 72px}
+.conc-title{font-family:'Cormorant Garamond',serif;font-size:clamp(34px,4.5vw,62px);font-weight:300;line-height:1.1;letter-spacing:-.03em;margin-bottom:56px}
+.conc-title em{font-style:italic;color:#e8945a}
+.conc-grid{display:grid;grid-template-columns:1fr 1fr;gap:72px}
+.pipeline-map{font-family:'DM Mono',monospace;font-size:12px;line-height:2.2;color:rgba(248,244,238,.55)}
+.pm-phase{color:#f8f4ee;font-weight:400}
+.pm-dot{color:#e8945a;margin-right:8px}
+.pm-stages{display:block;padding-left:20px;font-size:11px;color:rgba(248,244,238,.35)}
+.takeaway{padding:22px 0;border-top:1px solid rgba(255,255,255,.1)}
+.takeaway:first-child{border-top:none}
+.tk-num{font-family:'DM Mono',monospace;font-size:11px;color:#e8945a;letter-spacing:.08em}
+.tk-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:400;line-height:1.3;margin:4px 0}
+.tk-body{font-size:14px;color:rgba(248,244,238,.52);line-height:1.7}
+.footer-bar{border-top:1px solid rgba(255,255,255,.08);padding:28px 0 0;margin-top:56px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(248,244,238,.22);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+
+/* REVEAL */
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .6s,transform .6s}
+.reveal.visible{opacity:1;transform:translateY(0)}
+
+/* KEYFRAMES */
+@keyframes fadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spulse{0%,100%{opacity:.22}50%{opacity:.55}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+
+/* RESPONSIVE */
+@media(max-width:780px){
+  .container{padding:0 20px}
+  .phase-header{grid-template-columns:1fr;gap:10px}
+  .phase-number{display:none}
+  .stage-trigger{grid-template-columns:42px 1fr auto;gap:10px}
+  .stage-body{padding-left:52px}
+  .align-section .container,.conc-grid{grid-template-columns:1fr;gap:36px}
+  .phase-tab{padding:13px 12px;font-size:10px}
+  .prob-row{grid-template-columns:68px 1fr 44px}
+}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero" id="top">
+<div class="hero-bg"></div>
+<div class="hero-grid"></div>
+<div class="hero-content">
+  <div class="hero-eyebrow">A plain-English technical guide</div>
+  <h1 class="hero-title">How an LLM answers<br><em>your question</em></h1>
+  <p class="hero-sub">From the moment you press Enter to the words appearing on screen — every step explained without jargon.</p>
+  <div class="hero-pill">"What is the capital of France?"</div>
+</div>
+<div class="scroll-hint"><div class="scroll-line"></div>scroll to explore</div>
+</section>
+
+<!-- STICKY NAV -->
+<nav class="phase-nav" id="pnav">
+  <a href="#ph1" class="phase-tab p1">01 — Input</a>
+  <a href="#ph2" class="phase-tab p2">02 — Numbers</a>
+  <a href="#ph3" class="phase-tab p3">03 — Transformer</a>
+  <a href="#ph4" class="phase-tab p4">04 — Output</a>
+  <a href="#align" class="phase-tab pa">Alignment</a>
+  <a href="#ph5" class="phase-tab p5">05 — Response</a>
+  <a href="#faq" class="phase-tab pfaq">FAQ</a>
+</nav>
+
+<!-- PHASE 1 -->
+<section id="ph1" class="sec-p1">
+<div class="container">
+  <div class="phase-header reveal">
+    <div class="phase-number">01</div>
+    <div class="phase-meta">
+      <div class="phase-label">Phase One</div>
+      <h2 class="phase-title">Your message travels to the model</h2>
+      <p class="phase-desc">Before any AI processing begins, your text makes a physical journey across the internet to a specialised chip built for parallel computation.</p>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stA">
+    <div class="stage-trigger" onclick="tog('stA')">
+      <div class="stage-id">A</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">You press Enter</div>
+        <div class="stage-sub">HTTPS · Load balancer · GPU</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <p>Your browser packages your text into a secure HTTPS request — the same protocol used for online banking — and sends it to a data centre. A load balancer routes it to an available GPU: a chip originally built for video games, repurposed for AI because it runs millions of small calculations simultaneously.</p>
+      <div class="cb"><pre><span class="hi">YOU PRESS ENTER</span>
+      │
+      ▼
+<span class="ok">[ Browser ]</span>  — packages text as HTTPS request
+      │  travels over the internet
+      ▼
+<span class="ok">[ Data centre ]</span>  — load balancer routes request
+      │
+      ▼
+<span class="ok">[ GPU assigned ]</span>  — processing begins</pre></div>
+      <div class="analogy"><div class="analogy-icon">🍽</div><div class="analogy-text"><strong>Analogy:</strong> Calling a restaurant order line. Your voice travels through the phone network to a kitchen that starts preparing your order.</div></div>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stB">
+    <div class="stage-trigger" onclick="tog('stB')">
+      <div class="stage-id">B</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Text normalization</div>
+        <div class="stage-sub">Unicode · Whitespace · Encoding</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <p>Before any AI work begins, your text is cleaned mechanically — extra spaces removed, invisible unicode characters stripped, encoding standardised. No intelligence yet.</p>
+      <div class="cb"><pre><span class="err">RAW:</span>   "What  is the  capital of France?<span class="err">​</span>"
+               ^^               ^^           <span class="err">↑</span>
+          double space    double space    invisible char
+
+<span class="ok">CLEAN:</span> "What is the capital of France?"</pre></div>
+      <p>Why it matters: "café" typed two different ways (with a composed vs decomposed character) looks identical but would be treated as different inputs without this step.</p>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stC">
+    <div class="stage-trigger" onclick="tog('stC')">
+      <div class="stage-id">C</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Context window assembly</div>
+        <div class="stage-sub">System prompt · History · Your message</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <p>The model never sees just your question. Before tokenization, everything is assembled into one document called the <strong>context window</strong>.</p>
+      <div class="cb"><pre><span class="dim">┌────────────────────────────────────────────────┐</span>
+<span class="dim">│</span>  <span class="hi">CONTEXT WINDOW</span>  <span class="dim">(e.g. 200,000 tokens for Claude)</span>  <span class="dim">│</span>
+<span class="dim">│</span>                                                <span class="dim">│</span>
+<span class="dim">│</span>  <span class="ok">[System prompt]</span>                              <span class="dim">│</span>
+<span class="dim">│</span>  "You are Claude, a helpful assistant..."      <span class="dim">│</span>
+<span class="dim">│</span>                                                <span class="dim">│</span>
+<span class="dim">│</span>  <span class="ok">[Conversation history]</span>                       <span class="dim">│</span>
+<span class="dim">│</span>  User: "Hi"   Assistant: "Hello!"              <span class="dim">│</span>
+<span class="dim">│</span>                                                <span class="dim">│</span>
+<span class="dim">│</span>  <span class="hi">[Your current message]</span>                       <span class="dim">│</span>
+<span class="dim">│</span>  "What is the capital of France?"              <span class="dim">│</span>
+<span class="dim">└────────────────────────────────────────────────┘</span>
+         │
+         ▼  All tokenized together as one input</pre></div>
+      <div class="analogy"><div class="analogy-icon">📋</div><div class="analogy-text"><strong>Analogy:</strong> Briefing a consultant fresh before every single question — "here are your instructions, here is everything we discussed, here is my new question." They read all of it each time.</div></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- PHASE 2 -->
+<section id="ph2" class="sec-p2" style="background:var(--warm);border-top:1px solid var(--border)">
+<div class="container">
+  <div class="phase-header reveal">
+    <div class="phase-number">02</div>
+    <div class="phase-meta">
+      <div class="phase-label">Phase Two</div>
+      <h2 class="phase-title">Text is converted into numbers</h2>
+      <p class="phase-desc">The model cannot read English. Everything must become numbers — tokens, then IDs, then meaning-encoded vectors ready for mathematical processing.</p>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stD">
+    <div class="stage-trigger" onclick="tog('stD')">
+      <div class="stage-id">D</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Tokenization</div>
+        <div class="stage-sub">BPE · Subwords · Misspellings</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <p>Text is split into <strong>tokens</strong> — chunks that are usually words but sometimes word-pieces. The tokenizer uses BPE (Byte Pair Encoding), built before model training in a separate step and then permanently frozen.</p>
+      <div class="token-row">
+        <div class="token-chip">"What"<span class="tid">tok 1</span></div>
+        <div class="token-chip">" is"<span class="tid">tok 2</span></div>
+        <div class="token-chip">" the"<span class="tid">tok 3</span></div>
+        <div class="token-chip">" capital"<span class="tid">tok 4</span></div>
+        <div class="token-chip">" of"<span class="tid">tok 5</span></div>
+        <div class="token-chip">" France"<span class="tid">tok 6</span></div>
+        <div class="token-chip">"?"<span class="tid">tok 7</span></div>
+      </div>
+      <p style="font-size:13px;color:var(--muted);margin-top:-6px">The space before each word is encoded inside the token — this is how word boundaries are preserved.</p>
+      <p><strong>Misspellings:</strong> A misspelled word may not exist in the vocabulary as a whole — but its pieces usually do. The model reads the parts and infers intent from context.</p>
+      <div class="cb"><pre><span class="ok">"beautiful"</span>   → <span class="hi">["beautiful"]</span>             <span class="dim">1 token — known word</span>
+<span class="err">"beautyful"</span>   → <span class="hi">["beauty"]["ful"]</span>         <span class="dim">familiar pieces</span>
+<span class="err">"definately"</span>  → <span class="hi">["def"]["in"]["ately"]</span>
+<span class="err">"recieve"</span>     → <span class="hi">["rec"]["ie"]["ve"]</span>
+
+<span class="dim">Note: exact splits depend on the tokenizer — these are illustrative.
+Understanding comes from (a) familiar pieces + (b) sentence context.</span></pre></div>
+      <div class="analogy"><div class="analogy-icon">🖋</div><div class="analogy-text"><strong>Analogy:</strong> Reading "b_autiful" with ink smeared on one letter — context and letter patterns fill the gap. The model does the same with token pieces.</div></div>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stE">
+    <div class="stage-trigger" onclick="tog('stE')">
+      <div class="stage-id">E</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Token IDs</div>
+        <div class="stage-sub">Vocabulary lookup · Numbers only from here</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <p>Every token is looked up in a fixed vocabulary dictionary of 50,000–128,000 entries and replaced with its unique number. From this point on, the model works only with numbers — never raw text.</p>
+      <div class="cb"><pre><span class="dim">VOCABULARY LOOKUP:</span>
+
+  <span class="hi">"What"</span>     →  <span class="ok">9858</span>
+  <span class="hi">" is"</span>      →   <span class="ok">374</span>
+  <span class="hi">" the"</span>     →   <span class="ok">279</span>
+  <span class="hi">" capital"</span> →  <span class="ok">6864</span>
+  <span class="hi">" of"</span>      →   <span class="ok">315</span>
+  <span class="hi">" France"</span>  →  <span class="ok">3723</span>
+  <span class="hi">"?"</span>        →    <span class="ok">30</span>
+
+<span class="ok">SEQUENCE:</span> [9858, 374, 279, 6864, 315, 3723, 30]
+
+<span class="dim">Vocab sizes: GPT-2: 50,257 · GPT-4: 100,256 · Claude: ~100K+ · LLaMA 3: 128,000</span></pre></div>
+      <div class="analogy"><div class="analogy-icon">📚</div><div class="analogy-text"><strong>Analogy:</strong> A library catalog where every book has a unique number. The model passes catalog numbers around — never the books themselves.</div></div>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stF">
+    <div class="stage-trigger" onclick="tog('stF')">
+      <div class="stage-id">F</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Embeddings</div>
+        <div class="stage-sub">Meaning vectors · GPS coordinates for words</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <p>Each token ID is swapped for an <strong>embedding</strong> — a list of hundreds to thousands of numbers encoding meaning. Words with similar meanings get similar vectors. These were learned by reading vast text during training.</p>
+      <div class="cb"><pre><span class="dim">TOKEN → EMBEDDING (simplified to 5 dims; real: hundreds–thousands)</span>
+
+  <span class="hi">" France"</span> → <span class="ok">[ 0.78,  0.62,  0.15,  0.33, -0.50 ]</span>
+  <span class="hi">"Paris"</span>   → <span class="ok">[ 0.74,  0.68,  0.18,  0.30, -0.48 ]</span>  <span class="dim">← nearby</span>
+  <span class="hi">"banana"</span>  → <span class="ok">[-0.12, -0.55,  0.71, -0.23,  0.84 ]</span>  <span class="dim">← far away</span>
+
+<span class="dim">SIZES: GPT-2: 768 · GPT-3: 12,288 · LLaMA 3 (8B): 4,096 · Claude: undisclosed</span></pre></div>
+      <div class="analogy"><div class="analogy-icon">🗺</div><div class="analogy-text"><strong>Analogy:</strong> Every word as a point on a giant invisible map. "King" and "Queen" sit close together. "Dog" and "Cat" are near each other but far from "King". Embeddings are GPS coordinates on a meaning-map.</div></div>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stG">
+    <div class="stage-trigger" onclick="tog('stG')">
+      <div class="stage-id">G</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">How similarity is measured</div>
+        <div class="stage-sub">Background concept · Cosine · Euclidean</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <div class="concept-note">This is a background concept — not a step the model takes with your text. Cosine similarity is used in retrieval systems built around LLMs. Inside attention (Stage I), a related but different measure — the raw dot product — is used.</div>
+      <div class="cb"><pre><span class="hi">COSINE SIMILARITY</span>  <span class="dim">— angle between vectors (retrieval, search)</span>
+
+  "King"   → [ 0.9,  0.3 ]
+  "Queen"  → [ 0.8,  0.4 ]   <span class="ok">← similar direction → score: ~0.99</span>
+  "Banana" → [-0.2, -0.9 ]   <span class="err">← opposite direction → score: ~-0.1</span>
+  Range: -1 (opposite) to +1 (identical direction)
+
+<span class="hi">EUCLIDEAN DISTANCE</span>  <span class="dim">— straight-line gap (clustering, retrieval)</span>
+
+  "Paris" → "France" = 1.2  <span class="ok">← close</span>
+  "Paris" → "banana" = 8.7  <span class="err">← far</span>
+
+<span class="dim">Inside the model: attention uses raw dot product (Q·K / √d_k)
+— related to cosine similarity but NOT identical. See Stage I.</span></pre></div>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stH">
+    <div class="stage-trigger" onclick="tog('stH')">
+      <div class="stage-id">H</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Positional encoding</div>
+        <div class="stage-sub">Word order · RoPE in modern models</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <p>Embeddings carry meaning but no sense of order. "Dog bites man" and "Man bites dog" have identical tokens in different positions — yet mean opposite things. Positional encoding adds a signal to each embedding marking its slot number.</p>
+      <div class="cb"><pre><span class="err">WITHOUT</span> positional encoding:
+  ["France", "capital", "is"]  →  order unknown
+
+<span class="ok">WITH</span> positional encoding:
+  ["France" + pos_1]  [" is" + pos_2]  ["capital" + pos_3]
+  "Dog bites man"  ≠  "Man bites dog"  <span class="ok">← now distinguishable</span>
+
+<span class="dim">Original transformer (2017): fixed sinusoidal encoding
+Modern models (LLaMA, likely Claude): RoPE — learned, relative
+Both achieve the same goal: teaching the model about word order.</span></pre></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- PHASE 3 -->
+<section id="ph3" class="sec-p3" style="border-top:1px solid var(--border)">
+<div class="container">
+  <div class="phase-header reveal">
+    <div class="phase-number">03</div>
+    <div class="phase-meta">
+      <div class="phase-label">Phase Three</div>
+      <h2 class="phase-title">The transformer reads and understands</h2>
+      <p class="phase-desc">The engine of the model. A transformer block runs 12 to 96+ times — each pass deepening the model's grasp of meaning, context, and relationships between words.</p>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stI">
+    <div class="stage-trigger" onclick="tog('stI')">
+      <div class="stage-id">I</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Multi-head self-attention</div>
+        <div class="stage-sub">Q · K · V · Context mixing · The breakthrough</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <p>Attention is what makes transformers powerful. Every token simultaneously asks: <em>"which other tokens in this sentence matter to me — and how much?"</em> Each token creates three vectors from itself:</p>
+      <div class="cb"><pre><span class="hi">Query (Q)</span>  "What am I looking for?"
+<span class="hi">Key   (K)</span>  "What do I offer to others looking at me?"
+<span class="hi">Value (V)</span>  "What is my actual content to contribute?"</pre></div>
+      <p><strong>Interactive:</strong> Click any word to see which others it attends to.</p>
+      <div class="attn-container">
+        <div class="attn-words" id="aw">
+          <div class="attn-word" data-i="0" onclick="setQ(0)">The</div>
+          <div class="attn-word" data-i="1" onclick="setQ(1)">trophy</div>
+          <div class="attn-word" data-i="2" onclick="setQ(2)">didn't</div>
+          <div class="attn-word" data-i="3" onclick="setQ(3)">fit</div>
+          <div class="attn-word" data-i="4" onclick="setQ(4)">because</div>
+          <div class="attn-word" data-i="5" onclick="setQ(5)">it</div>
+          <div class="attn-word" data-i="6" onclick="setQ(6)">was</div>
+          <div class="attn-word" data-i="7" onclick="setQ(7)">too</div>
+          <div class="attn-word" data-i="8" onclick="setQ(8)">big</div>
+        </div>
+        <div class="attn-hint" id="ah">"it" strongly attends to "trophy" (52%) and "big" (31%) — the pronoun is resolved.</div>
+      </div>
+      <div class="cb"><pre><span class="dim">STEP 1:</span> "it" creates Q: <span class="hi">"I am a pronoun — who do I refer to?"</span>
+<span class="dim">STEP 2:</span> every word creates K and V vectors
+<span class="dim">STEP 3:</span> score = Q · K / √d_k  <span class="dim">(raw dot product — NOT cosine similarity)</span>
+
+  "it" → "trophy"   <span class="ok">8.4</span>   →  <span class="hi">52%</span>
+  "it" → "big"      <span class="ok">6.2</span>   →  <span class="hi">31%</span>
+  "it" → "suitcase" <span class="dim">2.1</span>   →  <span class="dim">12%</span>
+  "it" → "The"      <span class="dim">0.3</span>   →   <span class="dim">5%</span>
+
+<span class="dim">STEP 4:</span> "it" = 52% of trophy's V + 31% of big's V + ...
+<span class="dim">Result: "it" now carries the understanding that it means "trophy".</span>
+
+<span class="dim">MULTI-HEAD: 12–96 heads run in parallel (model-specific, not universal)
+Each head learns different patterns: grammar, facts, coreference...</span></pre></div>
+      <div class="analogy"><div class="analogy-icon">🏛</div><div class="analogy-text"><strong>Analogy:</strong> In a meeting, someone says "the project." You scan the room — who has been talking about which project? — and weight each person's input. Attention does this for every word, across all other words, simultaneously.</div></div>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stJ">
+    <div class="stage-trigger" onclick="tog('stJ')">
+      <div class="stage-id">J</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Feed-forward network</div>
+        <div class="stage-sub">Fact memory · Expand · Activate · Compress</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <p>After attention mixes context, each token passes through a small neural network <em>independently</em>. If attention is "reading the room," the FFN is "consulting your own memory." Factual associations are believed to live here — though knowledge is distributed, not stored in labelled slots.</p>
+      <div class="cb"><pre><span class="dim">EACH TOKEN independently:</span>
+
+  Input vector  <span class="dim">[hundreds–thousands of numbers]</span>
+       │
+       ▼  <span class="hi">EXPAND</span>  ×4 (classic) or ×8/3 (SwiGLU models)
+       │  e.g.  4,096  →  16,384
+       │
+       ▼  <span class="hi">ACTIVATE</span>  SwiGLU / GELU  <span class="dim">— fires only relevant neurons</span>
+       │
+       ▼  <span class="hi">COMPRESS</span>  back to original size
+       │  e.g. 16,384  →   4,096
+
+<span class="dim">EXAMPLE: "capital" now carries France context (from attention).
+The FFN fires "Paris" associations strongly.
+"Berlin" and "London" stay weak — wrong country.
+(This is a useful intuition, not a literal mechanism.)</span></pre></div>
+      <div class="analogy"><div class="analogy-icon">🧠</div><div class="analogy-text"><strong>Analogy:</strong> After attention tells you "we are talking about France," the FFN is like flipping through your mental notebook — which facts surface given this exact context?</div></div>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stK">
+    <div class="stage-trigger" onclick="tog('stK')">
+      <div class="stage-id">K</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Residual connections + layer norm</div>
+        <div class="stage-sub">Signal preservation · Stability · Pre-LayerNorm</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <div class="cb"><pre><span class="hi">RESIDUAL CONNECTION</span>
+
+  final_output = sublayer(input) + <span class="ok">input</span>
+                                    <span class="dim">↑ original signal always preserved</span>
+
+  Without this: signal degrades over 96 layers → training fails.
+  With this: each layer learns only the "correction."
+
+<span class="hi">PRE-LAYER NORMALISATION</span>  <span class="dim">(applied BEFORE each sub-layer in modern models)</span>
+
+  Rescales values: mean = 0, standard deviation = 1.
+
+  Raw:    [412.3,  -0.04,  8831.2,  1.1]
+  Normed: [  0.2,   -0.8,     1.7,  0.0]
+
+  <span class="dim">Like adjusting a microphone before each speaker —
+  prevents any one layer from drowning out the others.</span></pre></div>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stL">
+    <div class="stage-trigger" onclick="tog('stL')">
+      <div class="stage-id">L</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">KV cache</div>
+        <div class="stage-sub">Avoid recomputation · Speed · Memory cost</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <p>As the model generates one token at a time, Keys and Values for all past tokens are already computed. The KV cache stores them — only the newest token needs fresh computation each step.</p>
+      <div class="cb"><pre><span class="dim">GENERATING: "Paris is the capital of France."</span>
+
+Token "Paris":    compute K₁,V₁ → <span class="ok">cache</span>.  Attend: [K₁,V₁]
+Token " is":      compute K₂,V₂ → <span class="ok">cache</span>.  Reuse K₁,V₁ from cache.
+Token " the":     compute K₃,V₃ → <span class="ok">cache</span>.  Reuse K₁,V₁,K₂,V₂. ...
+
+<span class="err">WITHOUT cache:</span>  recompute everything each step  → very slow
+<span class="ok">WITH cache:</span>     only new token computed each step → fast
+
+<span class="dim">COST: KV cache uses GPU memory — long conversations use more.</span></pre></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- PHASE 4 -->
+<section id="ph4" class="sec-p4" style="background:var(--warm);border-top:1px solid var(--border)">
+<div class="container">
+  <div class="phase-header reveal">
+    <div class="phase-number">04</div>
+    <div class="phase-meta">
+      <div class="phase-label">Phase Four</div>
+      <h2 class="phase-title">A response is chosen word by word</h2>
+      <p class="phase-desc">The transformer output is projected onto the full vocabulary, turned into probabilities, and a decoding strategy picks the next token.</p>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stM">
+    <div class="stage-trigger" onclick="tog('stM')">
+      <div class="stage-id">M</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Unembedding</div>
+        <div class="stage-sub">lm_head · Vector → logits · One score per word</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <p>A final linear layer (the <strong>lm_head</strong>) projects the last token's vector onto the entire vocabulary — one raw score called a <em>logit</em> per possible next word.</p>
+      <div class="cb"><pre>Final hidden vector  <span class="dim">[thousands of numbers]</span>
+    ×  lm_head matrix
+    ▼
+<span class="hi">LOGITS</span>  (raw scores, one per vocabulary entry):
+
+  "Paris"   →  <span class="ok">14.8</span>  ← very high
+  "London"  →   <span class="dim">9.2</span>
+  "Berlin"  →   <span class="dim">8.1</span>
+  "Rome"    →   <span class="dim">7.4</span>
+  "the"     →   <span class="dim">3.1</span>
+  "banana"  →  <span class="err">-5.3</span>  ← very low</pre></div>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stN">
+    <div class="stage-trigger" onclick="tog('stN')">
+      <div class="stage-id">N</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Softmax and probability diffusion</div>
+        <div class="stage-sub">Scores → percentages · Exponential amplification</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <p>Softmax converts raw logits into a probability distribution summing to 100%. It exponentiates each score — amplifying differences dramatically. A logit gap of 5.6 translates to a probability ratio of roughly 6:1.</p>
+      <div class="cb">
+        <div class="prob-list">
+          <div class="prob-row">
+            <div class="prob-label">"Paris"</div>
+            <div class="prob-track"><div class="prob-fill" style="width:72.3%;background:#1e7a4e"></div></div>
+            <div>
+              <div class="prob-pct">72.3%</div>
+              <div class="prob-logit">logit 14.8</div>
+            </div>
+          </div>
+          <div class="prob-row">
+            <div class="prob-label">"London"</div>
+            <div class="prob-track"><div class="prob-fill" style="width:12.1%;background:#1d5fa8"></div></div>
+            <div>
+              <div class="prob-pct">12.1%</div>
+              <div class="prob-logit">logit 9.2</div>
+            </div>
+          </div>
+          <div class="prob-row">
+            <div class="prob-label">"Berlin"</div>
+            <div class="prob-track"><div class="prob-fill" style="width:8.8%;background:#6b32a0"></div></div>
+            <div>
+              <div class="prob-pct">8.8%</div>
+              <div class="prob-logit">logit 8.1</div>
+            </div>
+          </div>
+          <div class="prob-row">
+            <div class="prob-label">"Rome"</div>
+            <div class="prob-track"><div class="prob-fill" style="width:4.4%;background:#a07828"></div></div>
+            <div>
+              <div class="prob-pct">4.4%</div>
+              <div class="prob-logit">logit 7.4</div>
+            </div>
+          </div>
+          <div class="prob-row">
+            <div class="prob-label">others</div>
+            <div class="prob-track"><div class="prob-fill" style="width:2.4%;background:#888"></div></div>
+            <div>
+              <div class="prob-pct">2.4%</div>
+              <div class="prob-logit">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p style="font-size:13px;color:var(--muted);margin-top:8px">The logit gap between Paris (14.8) and London (9.2) is only 5.6 — yet softmax turns that into a 6:1 probability ratio. Small score differences become large probability differences.</p>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stO">
+    <div class="stage-trigger" onclick="tog('stO')">
+      <div class="stage-id">O</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Decoding strategy</div>
+        <div class="stage-sub">Greedy · Top-k · Top-p · Temperature</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <div class="cb"><pre><span class="hi">GREEDY</span>       Always pick the highest probability word.
+             → Always "Paris". Fast. Deterministic. Can be repetitive.
+
+<span class="hi">TOP-K</span>        Sample randomly from only the top K candidates.
+             K=3: pick from {Paris 72%, London 12%, Berlin 9%}
+
+<span class="hi">TOP-P</span>        Keep smallest set of candidates summing to P (nucleus).
+             P=0.90:  Paris(72%) + London(12%) = 84%  ... not yet
+                      + Berlin(8%) = 92%  ✓  sample from these 3.
+             Self-adjusting: confident → narrow set, uncertain → wide.
+
+<span class="hi">TEMPERATURE</span>  The creativity dial.
+             Low  (0.1): Paris 98%, London 1.5%  → precise, safe
+             High (1.5): Paris 38%, London 28%   → varied, surprising
+
+<span class="dim">Claude uses top-p + temperature together.
+Code responses: low temp.   Creative writing: higher temp.</span></pre></div>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stP">
+    <div class="stage-trigger" onclick="tog('stP')">
+      <div class="stage-id">P</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Stop tokens</div>
+        <div class="stage-sub">End of sequence · Three stopping conditions</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <p>The model does not stop because it runs out of things to say — it stops because it samples a special <strong>stop token</strong> (a vocabulary entry meaning "done") or because a limit is reached.</p>
+      <div class="cb"><pre><span class="hi">STOP TOKENS</span> (examples vary by model family):
+  &lt;|endoftext|&gt;   GPT family
+  &lt;/s&gt;            LLaMA family
+  &lt;|eot_id|&gt;      LLaMA 3
+
+<span class="hi">STOPPING CONDITIONS:</span>
+  1. Model samples a stop token       <span class="dim">← most common</span>
+  2. Maximum token limit reached      <span class="dim">← safety cap</span>
+  3. Custom stop sequence matched     <span class="dim">← API feature</span></pre></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ALIGNMENT -->
+<section id="align" class="align-section">
+<div class="container">
+  <div>
+    <div class="align-badge"><div class="align-dot"></div>Training time — not per-request inference</div>
+    <h2 class="align-title">Before the pipeline runs:<br>Alignment &amp; RLHF</h2>
+    <p class="align-body">A raw language model just predicts statistically likely text — not helpful answers. The reason Claude responds directly and honestly is a separate training phase that shaped its weights once, before deployment. RLHF does not run when you press Enter.</p>
+    <div class="align-detail">
+      <div><strong>RLHF:</strong> Human raters compare outputs; a reward model learns human preference; the LLM is fine-tuned to maximise that reward.</div>
+      <div style="margin-top:10px"><strong>Constitutional AI (Claude):</strong> A set of principles guides the model's self-critique; AI feedback used alongside human feedback; trained to be helpful, harmless, and honest.</div>
+    </div>
+  </div>
+  <div class="align-cards reveal">
+    <div class="align-card">
+      <div class="align-card-lbl raw">Raw language model</div>
+      <div class="align-card-txt raw">"France is a country in western Europe with a rich history, known for its cuisine, fashion, and the Eiffel Tower..."</div>
+    </div>
+    <div class="align-card">
+      <div class="align-card-lbl aligned">Aligned model (Claude)</div>
+      <div class="align-card-txt aligned">"The capital of France is Paris."</div>
+    </div>
+    <div class="align-footnote">Same underlying model architecture.<br>Alignment changed the behaviour, not the structure.</div>
+  </div>
+</div>
+</section>
+
+<!-- PHASE 5 -->
+<section id="ph5" class="sec-p5" style="border-top:1px solid var(--border)">
+<div class="container">
+  <div class="phase-header reveal">
+    <div class="phase-number">05</div>
+    <div class="phase-meta">
+      <div class="phase-label">Phase Five</div>
+      <h2 class="phase-title">The response travels back to you</h2>
+      <p class="phase-desc">One token at a time, streamed live to your browser, then converted back into readable English.</p>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stQ">
+    <div class="stage-trigger" onclick="tog('stQ')">
+      <div class="stage-id">Q</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Autoregressive loop</div>
+        <div class="stage-sub">One token at a time · No backspace</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <p>The model generates one token, appends it to the context, and runs the entire pipeline again. The KV cache means past tokens are not recomputed. This repeats until a stop token is produced.</p>
+      <div class="cb"><pre><span class="dim">QUESTION: "What is the capital of France?"</span>
+
+Step 1: → <span class="hi">"The"</span>
+Step 2: → <span class="hi">" capital"</span>
+Step 3: → <span class="hi">" of"</span>
+Step 4: → <span class="hi">" France"</span>
+Step 5: → <span class="hi">" is"</span>
+Step 6: → <span class="hi">" Paris"</span>
+Step 7: → <span class="hi">"."</span>
+Step 8: → <span class="ok">[STOP TOKEN]</span>
+
+<span class="ok">OUTPUT: "The capital of France is Paris."</span>
+
+<span class="dim">The model cannot revise a word already generated.
+It writes left to right — like a typewriter with no backspace.
+Prompt wording matters from the very first token.</span></pre></div>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stR">
+    <div class="stage-trigger" onclick="tog('stR')">
+      <div class="stage-id">R</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Streaming</div>
+        <div class="stage-sub">Server-Sent Events · Why text appears live</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <p>Each token is sent to your browser as soon as it is generated via Server-Sent Events (SSE). You start reading while the model is still generating. Total compute time is the same — perceived wait is much shorter.</p>
+      <div class="cb"><pre><span class="err">WITHOUT streaming:</span>  wait several seconds → full answer appears at once
+
+<span class="ok">WITH streaming (what actually happens):</span>
+  Generate <span class="hi">"The"</span>       → send → display <span class="hi">"The"</span>
+  Generate <span class="hi">" capital"</span>  → send → display <span class="hi">"The capital"</span>
+  Generate <span class="hi">" of"</span>        → send → display <span class="hi">"The capital of"</span>  ...
+  You are reading while the model is still writing.</pre></div>
+    </div>
+  </div>
+
+  <div class="stage reveal" id="stS">
+    <div class="stage-trigger" onclick="tog('stS')">
+      <div class="stage-id">S</div>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Detokenization</div>
+        <div class="stage-sub">IDs → tokens → readable English</div>
+      </div>
+      <div class="stage-arrow">+</div>
+    </div>
+    <div class="stage-body">
+      <div class="cb"><pre>TOKEN IDS:  <span class="ok">[791, 6864, 315, 3723, 374, 13210, 13]</span>
+              ↓     ↓    ↓     ↓    ↓      ↓    ↓
+TOKENS:    <span class="hi">"The" "capital" "of" "France" "is" "Paris" "."</span>
+
+JOIN:  <span class="ok">"The capital of France is Paris."</span>
+
+Sent back over HTTPS → rendered in your browser.</pre></div>
+      <p>Spaces and punctuation were encoded inside token pieces throughout — they appear naturally when joined. No post-processing needed.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- FAQ -->
+<section id="faq" class="faq-section">
+<div class="container">
+  <h2 class="faq-title reveal">Frequently asked questions</h2>
+
+  <div class="faq-item reveal">
+    <div class="faq-q" onclick="togFaq(this)">What is a prompt?<div class="faq-icon">+</div></div>
+    <div class="faq-a">A <em>prompt</em> is everything inside the context window — your question, the system instructions, and the full conversation history (Stage C). "Prompt engineering" means carefully wording that input to get better outputs. Because the model generates left-to-right with no backspace, the starting conditions steer the entire generation path from the first token.<div class="cb" style="margin-top:12px"><pre><span class="hi">PROMPT</span> = system instructions + conversation history + your message
+       = everything in the context window
+
+Tips: be specific · give context · state the format you want up front</pre></div>
+    </div>
+  </div>
+
+  <div class="faq-item reveal">
+    <div class="faq-q" onclick="togFaq(this)">Does Claude read my other conversations or personal data?<div class="faq-icon">+</div></div>
+    <div class="faq-a">No. Each conversation is fully isolated. The model only sees the current context window. Past conversations are not included unless you paste them in yourself.<div class="cb" style="margin-top:12px"><pre><span class="dim">Conversation A (yesterday):  "My name is Priya."</span>
+
+<span class="hi">Conversation B (today):</span>  "What is my name?"
+Claude: <span class="ok">"I don't have that information — this is a fresh conversation."</span>
+
+<span class="dim">Exception: if a memory tool is explicitly enabled, summarised context
+may be injected into the system prompt. Claude cannot access other
+users' conversations.</span></pre></div>
+    </div>
+  </div>
+
+  <div class="faq-item reveal">
+    <div class="faq-q" onclick="togFaq(this)">Why does the model sometimes give wrong answers confidently?<div class="faq-icon">+</div></div>
+    <div class="faq-a">The model is a prediction engine, not a search engine. It generates the most statistically likely continuation based on training patterns — it does not verify facts against a database.<div class="cb" style="margin-top:12px"><pre><span class="ok">WHAT IT DOES:</span>    "What text most plausibly follows this?"
+<span class="err">WHAT IT DOESN'T:</span> "Let me verify this against a database."
+
+Obscure, recent, or niche facts → may be wrong or invented.
+This is called <span class="hi">hallucination</span>.
+
+Claude's Constitutional AI training reduces frequency —
+but no model is immune entirely.</pre></div>
+    </div>
+  </div>
+
+  <div class="faq-item reveal">
+    <div class="faq-q" onclick="togFaq(this)">What is the difference between a parameter and a token?<div class="faq-icon">+</div></div>
+    <div class="faq-a"><div class="cb"><pre><span class="hi">TOKEN</span>      A piece of text — input or output.
+           "What is the capital of France?" = 7 tokens.
+           Changes with every message. Runtime data.
+
+<span class="hi">PARAMETER</span>  A number in the model's weights — learned during training.
+           A 70B model has 70,000,000,000 of them.
+           Fixed at inference. Does not change when you chat.
+
+<span class="dim">Parameters = synaptic connections (fixed after learning)
+Tokens      = thoughts passing through (changing every message)</span></pre></div>
+    </div>
+  </div>
+
+  <div class="faq-item reveal">
+    <div class="faq-q" onclick="togFaq(this)">Why does the same question sometimes get different answers?<div class="faq-icon">+</div></div>
+    <div class="faq-a">Temperature and top-p sampling introduce intentional randomness. The model samples from a distribution rather than always picking the top token — so two runs may follow different paths through probability space.<div class="cb" style="margin-top:12px"><pre>Run 1: <span class="ok">"The capital of France is Paris."</span>
+Run 2: <span class="ok">"Paris is the capital of France."</span>
+Run 3: <span class="ok">"France's capital is Paris."</span>
+
+All correct. Variation from decoding strategy, not factual inconsistency.
+<span class="dim">Set temperature = 0 → greedy decoding → fully deterministic.</span></pre></div>
+    </div>
+  </div>
+
+  <div class="faq-item reveal">
+    <div class="faq-q" onclick="togFaq(this)">What happens with very long questions?<div class="faq-icon">+</div></div>
+    <div class="faq-a">Everything — your message, system prompt, and conversation history — must fit inside the context window. Exceeding the limit causes truncation or an error.<div class="cb" style="margin-top:12px"><pre><span class="dim">CONTEXT WINDOW LIMITS (approximate):</span>
+  GPT-4:         128,000 tokens  ≈   96,000 words
+  Claude:        200,000 tokens  ≈  150,000 words  <span class="dim">(≈ a full novel)</span>
+  LLaMA 3 (8B):   8,000 tokens  ≈    6,000 words
+
+<span class="dim">1 token ≈ 0.75 words in English (Anthropic / OpenAI rule of thumb)</span></pre></div>
+    </div>
+  </div>
+
+  <div class="faq-item reveal">
+    <div class="faq-q" onclick="togFaq(this)">Does the model understand language the way humans do?<div class="faq-icon">+</div></div>
+    <div class="faq-a">A genuinely open question in AI research.<div class="cb" style="margin-top:12px"><pre><span class="ok">DEMONSTRABLY DOES:</span>
+  Encodes semantic relationships (embeddings)
+  Resolves pronoun references in context
+  Applies grammatical patterns consistently
+  Recalls factual associations from training
+  Reasons through multi-step problems
+
+<span class="dim">UNCERTAIN:</span>
+  Whether this constitutes "understanding" in a cognitive sense
+  Whether it has beliefs, intentions, or awareness
+
+<span class="err">DEFINITIVELY DOES NOT HAVE:</span>
+  Persistent memory across conversations (unless given tools)
+  → Each new chat is a fresh instance. It does not "forget" —
+    there was no continuous "it" between sessions.
+  Real-time knowledge (unless given search tools)
+  A body, sensory experience, or continuous existence</pre></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- CONCLUSION -->
+<section class="conclusion">
+<div class="container">
+  <h2 class="conc-title">The full journey,<br><em>in one picture</em></h2>
+  <div class="conc-grid">
+    <div>
+      <div class="pipeline-map">
+        <div><span class="pm-dot">▪</span><span class="pm-phase">Alignment (training time)</span><span class="pm-stages">RLHF / Constitutional AI — shapes the model once, before deployment</span></div>
+        <div><span class="pm-dot">▪</span><span class="pm-phase">Phase 1 — Input</span><span class="pm-stages">A. HTTPS + GPU &nbsp; B. Normalization &nbsp; C. Context window</span></div>
+        <div><span class="pm-dot">▪</span><span class="pm-phase">Phase 2 — Numbers</span><span class="pm-stages">D. Tokenization &nbsp; E. Token IDs &nbsp; F. Embeddings &nbsp; G. Similarity &nbsp; H. Positional encoding</span></div>
+        <div><span class="pm-dot">▪</span><span class="pm-phase">Phase 3 — Transformer</span><span class="pm-stages">I. Attention &nbsp; J. Feed-forward &nbsp; K. Residuals &nbsp; L. KV cache</span></div>
+        <div><span class="pm-dot">▪</span><span class="pm-phase">Phase 4 — Output</span><span class="pm-stages">M. Unembedding &nbsp; N. Softmax &nbsp; O. Decoding &nbsp; P. Stop tokens</span></div>
+        <div><span class="pm-dot">▪</span><span class="pm-phase">Phase 5 — Response</span><span class="pm-stages">Q. Autoregressive loop &nbsp; R. Streaming &nbsp; S. Detokenization</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="takeaway">
+        <div class="tk-num">01</div>
+        <div class="tk-title">Prediction engine, not search engine</div>
+        <div class="tk-body">The model generates the most plausible continuation of text. It does not retrieve facts from a database.</div>
+      </div>
+      <div class="takeaway">
+        <div class="tk-num">02</div>
+        <div class="tk-title">Attention is the breakthrough</div>
+        <div class="tk-body">Every word looks at every other word simultaneously. This is why the model handles long-range relationships that earlier models forgot.</div>
+      </div>
+      <div class="takeaway">
+        <div class="tk-num">03</div>
+        <div class="tk-title">Alignment makes it useful</div>
+        <div class="tk-body">A raw LM just continues text. RLHF and Constitutional AI turn it into a model that answers your question directly and honestly.</div>
+      </div>
+      <div class="takeaway">
+        <div class="tk-num">04</div>
+        <div class="tk-title">Left to right, no backspace</div>
+        <div class="tk-body">Every token is committed as generated. The model cannot revise earlier words — prompt wording matters from the very first token.</div>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bar">
+    <span>How an LLM Answers Your Question — Guide v2.1, May 2026</span>
+    <span>Based on public research. Claude specs are illustrative where undisclosed.</span>
+  </div>
+</div>
+</section>
+
+<script>
+// Stage toggles
+function tog(id){document.getElementById(id).classList.toggle('open')}
+function togFaq(btn){btn.closest('.faq-item').classList.toggle('open')}
+
+// Attention interactive
+const WORDS = ['The','trophy',"didn't",'fit','because','it','was','too','big'];
+const AD = [
+  {w:[.55,.05,.03,.08,.05,.08,.05,.04,.07], h:'"The" mostly attends to itself — a common article pattern.'},
+  {w:[.08,.55,.04,.10,.05,.06,.04,.03,.05], h:'"trophy" attends to itself strongly — it is the key noun.'},
+  {w:[.06,.12,.45,.08,.06,.05,.05,.04,.09], h:'"didn\'t" looks at "fit" and "trophy" for sentence structure.'},
+  {w:[.04,.18,.08,.40,.06,.06,.05,.04,.09], h:'"fit" attends to "trophy" and itself — verb connects to subject.'},
+  {w:[.05,.15,.08,.10,.35,.08,.06,.04,.09], h:'"because" links to "trophy" and "fit" — a causal connector.'},
+  {w:[.04,.52,.03,.04,.02,.02,.02,.00,.31], h:'"it" strongly attends to "trophy" (52%) and "big" (31%) — pronoun resolved.'},
+  {w:[.04,.14,.05,.08,.04,.25,.30,.05,.05], h:'"was" links to "it" and itself — verb agreement.'},
+  {w:[.03,.10,.03,.06,.03,.12,.08,.40,.15], h:'"too" looks forward to "big" and back to "it".'},
+  {w:[.04,.18,.03,.08,.05,.22,.06,.15,.19], h:'"big" attends to "trophy" and "it" — adjective connects to subject.'}
+];
+
+function setQ(idx){
+  const nodes = document.querySelectorAll('#aw .attn-word');
+  const d = AD[idx];
+  nodes.forEach((n,i)=>{
+    n.className = 'attn-word';
+    // Reset to just the word text safely
+    n.textContent = WORDS[i];
+    if(i===idx){n.classList.add('query');return}
+    const pct = Math.round(d.w[i]*100);
+    if(pct>=20) n.classList.add('high');
+    else if(pct>=8) n.classList.add('med');
+    if(pct>=5){
+      const sp=document.createElement('span');
+      sp.className='wt';
+      sp.textContent=pct+'%';
+      n.appendChild(sp);
+    }
+  });
+  document.getElementById('ah').textContent=d.h;
+}
+setQ(5);
+
+// Scroll reveal
+const obs = new IntersectionObserver(es=>{
+  es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible')});
+},{threshold:.07});
+document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+
+// Active nav
+const navSecs=['ph1','ph2','ph3','ph4','align','ph5'];
+const tabs=document.querySelectorAll('.phase-tab');
+window.addEventListener('scroll',()=>{
+  let cur='';
+  navSecs.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el&&el.getBoundingClientRect().top<100) cur=id;
+  });
+  tabs.forEach(t=>{
+    t.classList.remove('active');
+    if(t.getAttribute('href')==='#'+cur) t.classList.add('active');
+  });
+},{passive:true});
+
+// Open first stage per phase by default
+['stA','stI','stM','stQ'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el) el.classList.add('open');
+});
+</script>
+</body>
+</html>
